@@ -3,15 +3,15 @@ import concurrent.futures
 import json
 import random
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import google.generativeai as genai
 import re
 import database
 import pandas as pd
-import importlib
 import time
-importlib.reload(database)
 
 # [설정] 기본 설정
 st.set_page_config(page_title="회계감사 랭크", page_icon="🏹", layout="wide")
