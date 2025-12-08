@@ -12,6 +12,7 @@ import re
 import database
 import pandas as pd
 import time
+from streamlit_option_menu import option_menu
 
 # [설정] 기본 설정
 st.set_page_config(page_title="회계감사 랭크", page_icon="🏹", layout="wide")
@@ -21,20 +22,87 @@ st.set_page_config(page_title="회계감사 랭크", page_icon="🏹", layout="w
 def local_css():
     st.markdown("""
     <style>
-        .stTextArea textarea { height: 150px; }
-        .score-box { padding: 20px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 24px; color: white; }
-        .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-            background-color: #212529 !important;
-            color: #f8f9fa !important;
+        /* [Nord Theme Color Palette]
+           Background: #2E3440 (Polar Night 1)
+           Card/Sidebar: #3B4252 (Polar Night 2)
+           Text: #ECEFF4 (Snow Storm)
+           Accent: #88C0D0 (Frost Blue)
+           Button: #5E81AC (Frost Dark Blue)
+        */
+
+        /* 전체 앱 배경 */
+        .stApp {
+            background-color: #2E3440;
+            color: #ECEFF4;
         }
+        
+        /* 카드 UI 스타일 */
+        .card {
+            background-color: #3B4252;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            border: 1px solid #434C5E;
+        }
+        
+        /* 텍스트 스타일 */
+        h1, h2, h3, h4, h5, h6 {
+            color: #ECEFF4 !important;
+        }
+        p, div, label, span {
+            color: #D8DEE9 !important;
+        }
+        
+        /* 강조 숫자 (랭킹, 점수 등) */
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #88C0D0; /* Frost Blue */
+        }
+        .metric-label {
+            font-size: 1rem;
+            color: #D8DEE9;
+        }
+        
+        /* 문제 박스 스타일 */
         .question-box {
-            background-color: #343a40;
+            background-color: #434C5E;
             padding: 20px;
             border-radius: 10px;
-            border: 1px solid #495057;
-            margin-bottom: 20px;
-            color: #f8f9fa;
+            border-left: 5px solid #88C0D0;
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+            color: #ECEFF4;
+            line-height: 1.6;
         }
+        
+        /* 버튼 스타일 재정의 */
+        div.stButton > button {
+            background-color: #5E81AC; /* 차분한 파란색 */
+            color: #ECEFF4;
+            border-radius: 8px;
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        div.stButton > button:hover {
+            background-color: #81A1C1; /* 호버 시 밝은 파란색 */
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(94, 129, 172, 0.4);
+        }
+        
+        /* 입력 폼 스타일 (다크 모드 최적화) */
+        .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+            background-color: #4C566A !important;
+            color: #ECEFF4 !important;
+            border: 1px solid #434C5E !important;
+        }
+        
+        /* 헤더 숨김 (사이드바 버튼 표시를 위해 주석 처리) */
+        /* header {visibility: hidden;} */
     </style>
     """, unsafe_allow_html=True)
 
@@ -319,20 +387,19 @@ def draw_target(score):
 # def login_page():
 #     pass
 
-# [화면 1] 홈 화면 렌더링
-def render_home():
-    st.title("회계감사 랭크 🏆")
-    st.markdown("### 환영합니다! 회계감사 마스터가 되어보세요.")
+# [화면 6] 커리큘럼 화면 렌더링
+def render_curriculum():
+    st.title("📚 학습 커리큘럼")
+    st.markdown("회계감사 마스터를 위한 단계별 학습 로드맵입니다.")
     
-    st.markdown("### 📚 학습 커리큘럼")
     hierarchy, name_map, _ = load_structure()
     
-    # Sort parts if needed, though dictionary insertion order is usually preserved in recent Python
+    # Sort parts if needed
     sorted_parts = sorted(hierarchy.keys())
     
     for part in sorted_parts:
         chapters = hierarchy[part]
-        with st.expander(part):
+        with st.expander(f"📌 {part}", expanded=False):
             # Sort chapters by code (ch1, ch2, ...)
             sorted_chapters = sorted(chapters.keys(), key=get_chapter_sort_key)
             for ch_code in sorted_chapters:
@@ -340,11 +407,7 @@ def render_home():
                 standards = chapters[ch_code]
                 st.markdown(f"- **{full_name}**: {', '.join(standards)}")
 
-    st.divider()
-    
-    if st.button("🚀 훈련 시작하기 (Start Training)", use_container_width=True, type="primary"):
-        st.session_state['current_page'] = "실전 훈련"
-        st.rerun()
+
 
 # [화면 3] 랭킹 화면 렌더링
 def render_ranking():
@@ -358,19 +421,28 @@ def render_ranking():
         col1, col2, col3 = st.columns(3)
         if len(df_rank) > 0:
             with col2:
-                st.header("🥇 1등")
-                st.subheader(df_rank.iloc[0]['사용자'])
-                st.write(f"{df_rank.iloc[0]['총점']:.1f} 점")
+                st.markdown(f"""
+                <div class="card">
+                    <h3>🥇 1위: {df_rank.iloc[0]['사용자']}</h3>
+                    <p class="metric-value">{df_rank.iloc[0]['총점']:.1f} 점</p>
+                </div>
+                """, unsafe_allow_html=True)
         if len(df_rank) > 1:
             with col1:
-                st.header("🥈 2등")
-                st.subheader(df_rank.iloc[1]['사용자'])
-                st.write(f"{df_rank.iloc[1]['총점']:.1f} 점")
+                st.markdown(f"""
+                <div class="card">
+                    <h3>🥈 2위: {df_rank.iloc[1]['사용자']}</h3>
+                    <p class="metric-value">{df_rank.iloc[1]['총점']:.1f} 점</p>
+                </div>
+                """, unsafe_allow_html=True)
         if len(df_rank) > 2:
             with col3:
-                st.header("🥉 3등")
-                st.subheader(df_rank.iloc[2]['사용자'])
-                st.write(f"{df_rank.iloc[2]['총점']:.1f} 점")
+                st.markdown(f"""
+                <div class="card">
+                    <h3>🥉 3위: {df_rank.iloc[2]['사용자']}</h3>
+                    <p class="metric-value">{df_rank.iloc[2]['총점']:.1f} 점</p>
+                </div>
+                """, unsafe_allow_html=True)
     
     st.divider()
     st.dataframe(df_rank, use_container_width=True, hide_index=True)
@@ -379,50 +451,149 @@ def render_ranking():
 def render_profile():
     st.title("👤 내 정보 (My Profile)")
     username = st.session_state.get('username', 'Guest')
-    stats = database.get_user_stats(username)
     
-    col1, col2 = st.columns([1, 3])
+    # 데이터 조회
+    if st.session_state.get('user_role') == 'GUEST':
+        # 게스트용 가상 데이터 (세션 상태 기반)
+        stats = {
+            'total_score': st.session_state.get('exp', 0.0),
+            'solved_count': int(st.session_state.get('exp', 0) // 10), # 대략적인 추정
+            'recent_history': []
+        }
+    else:
+        stats = database.get_user_stats(username)
+
+    # 레벨 및 경험치 계산 (100XP 당 1레벨 가정)
+    current_level = st.session_state.get('level', 1)
+    current_exp = st.session_state.get('exp', 0.0)
+    
+    # 다음 레벨까지 필요한 경험치 계산
+    xp_for_next_level = current_level * 100
+    xp_in_current_level = current_exp - ((current_level - 1) * 100)
+    progress_percent = min(100, max(0, (xp_in_current_level / 100) * 100))
+
+    # [UI Section 1] 사용자 상태창 (Profile Header)
+    # Custom CSS for Progress Bar
+    st.markdown(f"""
+    <style>
+        .profile-container {{
+            background-color: #3B4252;
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid #434C5E;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }}
+        .level-badge {{
+            background-color: #5E81AC;
+            color: #ECEFF4;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 10px;
+        }}
+        .progress-bg {{
+            background-color: #4C566A;
+            border-radius: 10px;
+            height: 20px;
+            width: 100%;
+            margin-top: 5px;
+            overflow: hidden;
+        }}
+        .progress-fill {{
+            background-color: #88C0D0;
+            height: 100%;
+            width: {progress_percent}%;
+            transition: width 0.5s ease-in-out;
+            border-radius: 10px;
+        }}
+        .exp-text {{
+            color: #D8DEE9;
+            font-size: 0.8rem;
+            text-align: right;
+            margin-top: 5px;
+        }}
+    </style>
+    
+    <div class="profile-container">
+        <div>
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={username}" width="120" style="border-radius: 50%; border: 3px solid #88C0D0;">
+        </div>
+        <div style="flex-grow: 1;">
+            <div class="level-badge">Lv.{current_level}</div>
+            <h2 style="margin: 0; color: #ECEFF4;">{username}</h2>
+            <div style="color: #81A1C1; margin-bottom: 10px;">Audit Trainee</div>
+            
+            <div class="progress-bg">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="exp-text">{int(xp_in_current_level)} / 100 XP (Next Level)</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # [UI Section 2] 통계 카드 (Stats Grid)
+    st.markdown("### 📊 훈련 요약")
+    col1, col2, col3 = st.columns(3)
+    
+    avg_score = stats['total_score'] / stats['solved_count'] if stats['solved_count'] > 0 else 0.0
+    
     with col1:
-        st.image("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix", width=150)
+        st.markdown(f"""
+        <div class="card">
+            <div class="metric-label">누적 점수 (Total XP)</div>
+            <div class="metric-value">{stats['total_score']:.1f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.subheader(f"{username} 님")
-        st.write(f"🌱 성장하는 감사인")
-    
-    st.divider()
-    
-    tab1, tab2 = st.tabs(["내 통계", "오답 노트"])
+        st.markdown(f"""
+        <div class="card">
+            <div class="metric-label">해결한 문제</div>
+            <div class="metric-value">{stats['solved_count']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+        <div class="card">
+            <div class="metric-label">평균 점수</div>
+            <div class="metric-value">{avg_score:.1f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # [UI Section 3] 하단 탭 (기존 유지)
+    st.write("")
+    tab1, tab2 = st.tabs(["📜 최근 기록", "📝 오답 노트"])
     
     with tab1:
-        # 통계 메트릭
-        m1, m2, m3 = st.columns(3)
-        m1.metric("누적 점수", f"{stats['total_score']:.1f} 점")
-        m2.metric("해결한 문제", f"{stats['solved_count']} 개")
-        avg_score = stats['total_score'] / stats['solved_count'] if stats['solved_count'] > 0 else 0
-        m3.metric("평균 점수", f"{avg_score:.1f} 점")
-        
-        st.subheader("📜 최근 풀이 기록")
         if stats['recent_history']:
+            # DataFrame 스타일링은 Streamlit 기본 기능 사용 (테마 적용됨)
             history_df = pd.DataFrame(stats['recent_history'], columns=['주제', '점수', '일시'])
             st.dataframe(history_df, use_container_width=True, hide_index=True)
         else:
             st.info("아직 풀이 기록이 없습니다.")
             
     with tab2:
-        st.subheader("📝 오답 노트")
-        
         if st.session_state.get('user_role') == 'GUEST':
-            st.warning("🔒 회원 전용 기능입니다.")
+            st.markdown("""
+            <div class="question-box" style="border-left-color: #EBCB8B;">
+                🔒 <strong>GUEST 모드 제한</strong><br>
+                오답 노트 기능은 회원 전용입니다. 로그인 후 이용해 주세요.
+            </div>
+            """, unsafe_allow_html=True)
         else:
             notes_df = database.get_user_review_notes(username)
-            
             if notes_df.empty:
-                st.info("오답 노트가 비어있습니다.")
+                st.info("오답 노트가 비어있습니다. 훌륭합니다!")
             else:
                 for index, row in notes_df.iterrows():
                     with st.expander(f"[{row['created_at']}] {row['question'][:30]}... (점수: {row['score']})"):
                         st.markdown(f"**문제:** {row['question']}")
                         st.info(f"**내 답안:** {row['answer']}")
-                        st.markdown(f"**관련 기준서:** {row['standard_code']}")
+                        st.markdown(f"**관련 기준서:** `{row['standard_code']}`")
                         
                         if st.button("🗑️ 삭제 (복습 완료)", key=f"del_note_{row['id']}"):
                             database.delete_review_note(row['id'])
@@ -603,73 +774,104 @@ def render_review(db_data):
     curr = res_list[st.session_state.review_idx]
     score = curr['eval']['score']
     
-    with st.container(border=True):
-        c_header, c_nav = st.columns([3, 1])
-        with c_header:
-            st.subheader(f"📊 결과 확인 ({st.session_state.review_idx+1}/{len(res_list)})")
-        with c_nav:
-            c_prev, c_next = st.columns(2)
-            with c_prev: 
-                if st.button("◀", use_container_width=True) and st.session_state.review_idx > 0: 
-                    st.session_state.review_idx -= 1; st.rerun()
-            with c_next:
-                if st.session_state.review_idx < len(res_list)-1:
-                    if st.button("▶", use_container_width=True): 
-                        st.session_state.review_idx += 1; st.rerun()
+    # [Header Navigation]
+    with st.container():
+        c1, c2, c3 = st.columns([1, 4, 1])
+        with c1:
+            if st.button("◀ 이전", use_container_width=True) and st.session_state.review_idx > 0:
+                st.session_state.review_idx -= 1; st.rerun()
+        with c2:
+            st.markdown(f"<h3 style='text-align: center; margin: 0;'>Review Question {st.session_state.review_idx + 1} / {len(res_list)}</h3>", unsafe_allow_html=True)
+        with c3:
+            if st.session_state.review_idx < len(res_list) - 1:
+                if st.button("다음 ▶", use_container_width=True):
+                    st.session_state.review_idx += 1; st.rerun()
 
-        if score >= 5.0: st.success(f"결과: 통과! (+{score} XP)")
-        else: st.error(f"결과: 실패! (+{score} XP)")
+    st.write("")
 
-        col_L, col_R = st.columns([2, 1])
-        with col_L:
-            st.subheader("❓ 문제와 당신의 답안")
-            st.markdown(f"**문제:** {curr['q_data']['question']['description']}")
-            st.info(f"**내 답안:** {curr['u_ans']}")
-            st.subheader("💡 모범 답안")
-            model_answers = curr['q_data']['answer_data']['model_answer']
-            if isinstance(model_answers, list): formatted_answer = "\n".join([f"- {ans}" for ans in model_answers])
-            else: formatted_answer = f"- {model_answers}"
-            st.success(formatted_answer)
-            st.subheader("🤖 AI 피드백")
-            st.markdown(curr['eval']['evaluation'])
-            with st.expander("📚 참고 기준서 보기"):
-                st.markdown(f"**참조 기준서:** `{curr['q_data']['standard']}`")
-        with col_R:
-            st.pyplot(draw_target(score))
-            st.markdown(f"""<div class="score-box">{score}점</div>""", unsafe_allow_html=True)
-            
-            st.write("")
-            st.write("")
-            if st.session_state.get('user_role') == 'GUEST':
-                st.warning("🔒 GUEST는 오답 노트가 저장되지 않습니다.")
-            else:
-                if st.button("📂 오답 노트에 저장", key="save_note_btn"):
-                    database.save_review_note(
-                        st.session_state['username'],
-                        curr['q_data']['standard'],
-                        curr['q_data']['question']['description'],
-                        curr['u_ans'],
-                        score
-                    )
-                    st.toast("오답 노트에 추가되었습니다!", icon="📝")
+    # [Main Content Layout]
+    # Left: Question & Answer Comparison / Right: Score & AI Feedback
+    col_main, col_feed = st.columns([2, 1])
     
+    with col_main:
+        # 1. Question Card
+        st.markdown(f"""
+        <div class="card">
+            <div style="color: #88C0D0; font-size: 0.9rem; margin-bottom: 5px;">Question</div>
+            <div style="font-size: 1.1rem; line-height: 1.5;">{curr['q_data']['question']['description']}</div>
+            <div style="margin-top: 10px; font-size: 0.8rem; color: #697386;">관련 기준서: {curr['q_data']['standard']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 2. Comparison (User vs Model)
+        st.markdown("#### 🆚 답안 비교")
+        
+        # User Answer
+        st.markdown(f"""
+        <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border-left: 4px solid #D8DEE9; margin-bottom: 15px;">
+            <div style="color: #D8DEE9; font-size: 0.9rem; font-weight: bold;">� 내 답안</div>
+            <div style="color: #ECEFF4; margin-top: 5px;">{curr['u_ans']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Model Answer
+        model_answers = curr['q_data']['answer_data']['model_answer']
+        if isinstance(model_answers, list): 
+            formatted_answer = "<br>".join([f"• {ans}" for ans in model_answers])
+        else: 
+            formatted_answer = model_answers
+            
+        st.markdown(f"""
+        <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border-left: 4px solid #A3BE8C;">
+            <div style="color: #A3BE8C; font-size: 0.9rem; font-weight: bold;">� 모범 답안</div>
+            <div style="color: #ECEFF4; margin-top: 5px;">{formatted_answer}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_feed:
+        # 3. Score Target
+        st.markdown(f"""
+        <div class="card" style="text-align: center; padding: 10px;">
+            <div style="font-size: 0.9rem; color: #88C0D0;">AI 채점 결과</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #ECEFF4;">{score} <span style="font-size: 1rem; color: #697386;">/ 10</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(draw_target(score), use_container_width=True)
+        
+        # 4. AI Feedback
+        st.markdown("#### 🤖 AI 분석")
+        st.info(curr['eval']['evaluation'])
+        
+        st.write("")
+        if st.session_state.get('user_role') != 'GUEST':
+            if st.button("� 오답 노트 저장", key=f"save_{st.session_state.review_idx}", use_container_width=True):
+                database.save_review_note(
+                    st.session_state['username'],
+                    curr['q_data']['standard'],
+                    curr['q_data']['question']['description'],
+                    curr['u_ans'],
+                    score
+                )
+                st.toast("오답 노트에 저장되었습니다!", icon="✅")
+
+    # [Footer Actions]
     if st.session_state.review_idx == len(res_list) - 1:
         st.divider()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 같은 설정으로 재시작", use_container_width=True):
+        c_a, c_b = st.columns(2)
+        with c_a:
+            if st.button("🔄 다시 풀기 (Retry)", use_container_width=True):
                 settings = st.session_state.get('saved_settings')
                 if settings:
                     quiz_list = get_quiz_set(db_data, settings['part'], settings['chapter'], settings['standard'], settings['num_questions'])
-                    if not quiz_list: st.error("문제가 없습니다.")
-                    else:
-                        st.session_state.quiz_list = quiz_list
-                        st.session_state.answers = {q['question']['title']: "" for q in quiz_list}
-                        st.session_state.app_state = 'SOLVING'
-                        st.rerun()
-        with col2:
-            if st.button("⏹️ 종료 (설정 화면으로)", use_container_width=True, type="primary"): 
-                st.session_state.app_state = 'SETUP'; st.rerun()
+                    st.session_state.quiz_list = quiz_list
+                    st.session_state.answers = {q['question']['title']: "" for q in quiz_list}
+                    st.session_state.app_state = 'SOLVING'
+                    st.rerun()
+        with c_b:
+            if st.button("🏠 홈으로 이동", type="primary", use_container_width=True):
+                st.session_state.app_state = 'SETUP'
+                st.rerun()
 def main():
     database.init_db()
     
@@ -678,9 +880,10 @@ def main():
         st.session_state['username'] = None
 
     with st.sidebar:
-        st.title("Audit Rank")
+        # (기존 로그인 전 로직 유지...)
         
         if not st.session_state['username']:
+            st.title("Audit Rank")
             # [Scenario A] 비로그인 상태: 로그인/회원가입 탭
             tab_login, tab_signup = st.tabs(["로그인", "회원가입"])
             
@@ -735,43 +938,48 @@ def main():
                                 
         else:
             # [Scenario B] 로그인 상태
-            username = st.session_state['username']
-            role = st.session_state.get('user_role', 'MEMBER')
             
-            # 등급 표시 (뱃지 스타일)
-            if role == 'PRO' or role == 'ADMIN':
-                st.success(f"👑 {username}님 ({role})")
-            elif role == 'PAID':
-                st.info(f"💎 {username}님 ({role})")
-            elif role == 'GUEST':
-                st.warning(f"👤 {username}님 ({role})")
-            else:
-                st.info(f"🌱 {username}님 ({role})")
+            # 로그인 성공 시 메뉴 표시 부분:
+            st.image("https://api.dicebear.com/7.x/avataaars/svg?seed=" + st.session_state['username'], width=100)
+            st.write(f"**{st.session_state['username']}**님 환영합니다.")
             
-            # 레벨/XP 표시
-            current_level = st.session_state.get('level', 1)
-            current_exp = st.session_state.get('exp', 0.0)
+            # 메뉴 구성: 훈련시작(Training), 랭킹(Ranking), 내 정보(Profile), 커리큘럼(Curriculum)
+            selected = option_menu(
+                menu_title="Audit Rank",
+                options=["훈련 시작", "랭킹", "내 정보", "커리큘럼"],
+                icons=["play-circle", "trophy", "person-circle", "book"],
+                menu_icon="cast",
+                default_index=0,
+                styles={
+                    "container": {"padding": "5px", "background-color": "#2E3440"},
+                    "icon": {"color": "#88C0D0", "font-size": "20px"}, 
+                    "nav-link": {
+                        "font-size": "16px", 
+                        "text-align": "left", 
+                        "margin": "5px", 
+                        "color": "#D8DEE9",
+                        "--hover-color": "#434C5E"
+                    },
+                    "nav-link-selected": {
+                        "background-color": "#5E81AC", 
+                        "color": "#ECEFF4",
+                        "font-weight": "600"
+                    },
+                }
+            )
             
-            st.metric("Level", f"Lv.{current_level}", f"{current_exp:.1f} XP")
-            
-            st.divider()
-            
-            # 네비게이션
-            menu_options = ["홈", "실전 훈련", "랭킹", "내 정보"]
-            try:
-                current_index = menu_options.index(st.session_state.get('current_page', '홈'))
-            except ValueError:
-                current_index = 0
+            # 선택된 메뉴를 session_state에 반영하여 페이지 라우팅
+            if selected == "훈련 시작":
+                st.session_state['current_page'] = "실전 훈련"
+            elif selected == "랭킹":
+                st.session_state['current_page'] = "랭킹"
+            elif selected == "내 정보":
+                st.session_state['current_page'] = "내 정보"
+            elif selected == "커리큘럼":
+                st.session_state['current_page'] = "커리큘럼"
                 
-            selection = st.radio("메뉴 이동", menu_options, index=current_index, key="nav_radio")
-            
-            if selection != st.session_state.get('current_page'):
-                st.session_state['current_page'] = selection
-                st.rerun()
-                
             st.divider()
-            
-            if st.button("로그아웃", use_container_width=True):
+            if st.button("로그아웃"):
                 st.session_state.clear()
                 st.rerun()
 
@@ -792,7 +1000,7 @@ def main():
         if 'exp' not in st.session_state: st.session_state.exp = 0.0
         if 'level' not in st.session_state: st.session_state.level = 1
         if 'app_state' not in st.session_state: st.session_state.app_state = 'SETUP'
-        if 'current_page' not in st.session_state: st.session_state['current_page'] = "홈"
+        if 'current_page' not in st.session_state: st.session_state['current_page'] = "실전 훈련"
         
         # 레벨 계산 (단순 예시)
         st.session_state.level = 1 + int(st.session_state.exp // 100)
@@ -800,15 +1008,15 @@ def main():
         db_data = load_db()
         
         # 라우팅
-        if st.session_state['current_page'] == "홈":
-            render_home()
-        elif st.session_state['current_page'] == "실전 훈련":
+        if st.session_state['current_page'] == "실전 훈련":
             if not db_data: return
             render_quiz(db_data)
         elif st.session_state['current_page'] == "랭킹":
             render_ranking()
         elif st.session_state['current_page'] == "내 정보":
             render_profile()
+        elif st.session_state['current_page'] == "커리큘럼":
+            render_curriculum()
 
 if __name__ == "__main__":
     main()

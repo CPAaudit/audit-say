@@ -4,3 +4,4 @@ matplotlib
 numpy
 google-generativeai
 bcrypt
+streamlit-option-menu
