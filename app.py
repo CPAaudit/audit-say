@@ -276,8 +276,11 @@ def render_ranking():
     df = database.get_leaderboard_data()
     if not df.empty:
         # 등급 표시명 변환
-        df['등급'] = df['등급'].map(ROLE_NAMES).fillna(df['등급'])
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        # 등급 표시명 변환
+        df['role'] = df['role'].map(ROLE_NAMES).fillna(df['role'])
+        # 컬럼명 한글 변환 for better UX
+        df = df.rename(columns={'username': '이름', 'role': '등급', 'level': '레벨', 'exp': '경험치'})
+        st.dataframe(df[['이름', '등급', '레벨', '경험치']], use_container_width=True, hide_index=True)
     else:
         st.info("랭킹 데이터가 없습니다.")
 
