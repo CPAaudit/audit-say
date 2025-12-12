@@ -186,10 +186,10 @@ def grade_with_ai_model(q_text, u_ans, a_data, std_code, api_key):
     keywords = a_data.get('keywords', [])
     matched_count = calculate_matched_count(u_ans, keywords)
     
-    if matched_count < 4:
+    if matched_count < 3:
         return {
             "score": 0.0, 
-            "evaluation": f"📉 키워드가 부족합니다. (현재 {matched_count}개 / 최소 4개 필요)\n핵심 키워드를 포함하여 다시 작성해주세요."
+            "evaluation": f"📉 키워드가 부족합니다. (현재 {matched_count}개 / 최소 3개 필요)\n핵심 키워드를 포함하여 다시 작성해주세요."
         }
     
     # [Context Optimization] 키워드 매칭률에 따라 기준서 로드 여부 결정 (채점 점수에는 영향 X)
