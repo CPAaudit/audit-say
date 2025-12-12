@@ -365,7 +365,6 @@ def render_profile(db_data):
         # 주요 지표 계산
         total_xp = stats['total_score']
         total_solved = len(df_all) if not df_all.empty else 0
-        avg_score = df_all['score'].mean() if not df_all.empty else 0.0
         
         # XP Progress (단순화: 레벨당 100XP 가정)
         current_level_xp = total_xp % 100
@@ -380,10 +379,6 @@ def render_profile(db_data):
                     <div style="width: {progress_pct}%; background-color: #88C0D0; height: 6px; border-radius: 3px;"></div>
                 </div>
                 <div style="text-align: right; font-size: 0.7rem; color: #D8DEE9; margin-top: 2px;">{progress_pct}% to Lv.{st.session_state.level+1}</div>
-            </div>
-            <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
-                <div style="color: #D8DEE9; font-size: 0.9rem;">Avg. Score</div>
-                <div style="color: #A3BE8C; font-size: 1.8rem; font-weight: bold;">{avg_score:.1f} <span style="font-size: 1rem; color: #D8DEE9;">/ 10</span></div>
             </div>
             <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
                 <div style="color: #D8DEE9; font-size: 0.9rem;">Questions Solved</div>
