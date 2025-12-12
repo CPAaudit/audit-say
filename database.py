@@ -17,24 +17,11 @@ supabase = init_db()
 
 # --- 사용자 로그인 및 정보 관리 ---
 def login_user(username, password):
-    """로그인 처리: 없으면 자동 가입, 있으면 비번 확인"""
+    """로그인 처리"""
     try:
         res = supabase.table("users").select("*").eq("username", username).execute()
+        if not res.data: return None # 유저 없음
         
-        # 신규 유저
-        if not res.data:
-            new_user = {
-                "username": username, 
-                "password": password, 
-                "level": 1, 
-                "exp": 0, 
-                "role": "MEMBER"
-            }
-            supabase.table("users").insert(new_user).execute()
-            # 반환값: ID, PW, ROLE, LEVEL, EXP
-            return [username, password, "MEMBER", 1, 0]
-        
-        # 기존 유저
         user = res.data[0]
         if user['password'] == password:
             return [user['username'], user['password'], user['role'], user['level'], user['exp']]
@@ -42,6 +29,26 @@ def login_user(username, password):
             return None # 비번 불일치
     except Exception:
         return None
+
+def register_user(username, password):
+    """회원가입 처리"""
+    try:
+        # 중복 확인
+        res = supabase.table("users").select("username").eq("username", username).execute()
+        if res.data:
+            return False # 이미 존재
+            
+        new_user = {
+            "username": username, 
+            "password": password, 
+            "level": 1, 
+            "exp": 0, 
+            "role": "MEMBER"
+        }
+        supabase.table("users").insert(new_user).execute()
+        return True
+    except Exception:
+        return False
 
 def update_progress(username, level, exp):
     """경험치 저장"""

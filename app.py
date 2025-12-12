@@ -637,18 +637,39 @@ def main():
     with st.sidebar:
         st.title("Audit Rank 🏹")
         if not st.session_state.username:
-            with st.form("login"):
-                uid = st.text_input("ID")
-                upw = st.text_input("PW", type="password")
-                if st.form_submit_button("로그인"):
-                    user = database.login_user(uid, upw)
-                    if user:
-                        st.session_state.username = user[0]
-                        st.session_state.user_role = user[2]
-                        st.session_state.level = user[3]
-                        st.session_state.exp = user[4]
-                        st.rerun()
-                    else: st.error("로그인 실패")
+            tab_login, tab_signup = st.tabs(["로그인", "회원가입"])
+            
+            with tab_login:
+                with st.form("login_form"):
+                    uid = st.text_input("ID")
+                    upw = st.text_input("PW", type="password")
+                    if st.form_submit_button("로그인", use_container_width=True):
+                        user = database.login_user(uid, upw)
+                        if user:
+                            st.session_state.username = user[0]
+                            st.session_state.user_role = user[2]
+                            st.session_state.level = user[3]
+                            st.session_state.exp = user[4]
+                            st.rerun()
+                        else: st.error("로그인 실패: ID/PW를 확인하세요.")
+
+            with tab_signup:
+                with st.form("signup_form"):
+                    new_uid = st.text_input("ID", key="su_uid")
+                    new_upw = st.text_input("PW", type="password", key="su_upw")
+                    new_upw_cf = st.text_input("PW 확인", type="password", key="su_upw_cf")
+                    
+                    if st.form_submit_button("회원가입", use_container_width=True):
+                        if new_upw != new_upw_cf:
+                            st.error("비밀번호가 일치하지 않습니다.")
+                        elif len(new_uid) < 2 or len(new_upw) < 4:
+                            st.error("ID 2자 이상, PW 4자 이상 입력하세요.")
+                        else:
+                            success = database.register_user(new_uid, new_upw)
+                            if success:
+                                st.success("가입 성공! 로그인 탭에서 로그인해주세요.")
+                            else:
+                                st.error("이미 존재하는 ID입니다.")
             if st.button("비회원 시작"):
                 st.session_state.username = "Guest"
                 st.session_state.user_role = "GUEST"
