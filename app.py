@@ -463,8 +463,6 @@ def render_profile(db_data):
             st.info("기록이 없습니다.")
         else:
             st.dataframe(df_all[['standard_code', 'score', 'created_at']].sort_values('created_at', ascending=False), use_container_width=True, hide_index=True)
-                chap_avg = df_all.groupby('chapter')['score'].mean()
-                st.bar_chart(chap_avg, color="#5E81AC")
 
 def render_admin():
     st.title("🛠️ 관리자 페이지")
