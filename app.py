@@ -261,6 +261,56 @@ def draw_target(score):
     ax.set_xlim(-11, 11); ax.set_ylim(-11, 11); ax.axis('off')
     return fig
 
+def draw_skill_chart(stats):
+    """스킬 분석 차트 (데이터 개수에 따라 Radar 또는 Bar)"""
+    labels = list(stats.keys())
+    values = list(stats.values())
+    
+    if not labels: return None
+
+    # 데이터가 3개 미만이면 Horizontal Bar Chart
+    if len(labels) < 3:
+        fig, ax = plt.subplots(figsize=(5, 3))
+        y_pos = np.arange(len(labels))
+        ax.barh(y_pos, values, align='center', color='#88C0D0')
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(labels, color='#D8DEE9')
+        ax.invert_yaxis()  # labels read top-to-bottom
+        ax.set_xlabel('Score', color='#D8DEE9')
+        ax.set_xlim(0, 10)
+        
+        # Style
+        ax.set_facecolor('#2E3440')
+        fig.patch.set_facecolor('#2E3440')
+        ax.spines['bottom'].set_color('#4C566A')
+        ax.spines['top'].set_color('#4C566A') 
+        ax.spines['left'].set_color('#4C566A')
+        ax.spines['right'].set_color('#4C566A')
+        ax.tick_params(axis='x', colors='#D8DEE9')
+        ax.tick_params(axis='y', colors='#D8DEE9')
+        return fig
+
+    # Radar Chart
+    num_vars = len(labels)
+    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+    values += values[:1]
+    angles += angles[:1]
+    
+    fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))
+    ax.fill(angles, values, color='#88C0D0', alpha=0.25)
+    ax.plot(angles, values, color='#88C0D0', linewidth=2)
+    ax.set_yticklabels([])
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, color='#ECEFF4')
+    
+    # Style
+    ax.spines['polar'].set_color('#4C566A')
+    ax.grid(color='#4C566A', linestyle='--')
+    ax.set_facecolor('#2E3440')
+    fig.patch.set_facecolor('#2E3440')
+    
+    return fig
+
 # --- 화면 렌더링 함수 ---
 
 def render_curriculum():
@@ -285,46 +335,108 @@ def render_ranking():
         st.info("랭킹 데이터가 없습니다.")
 
 def render_profile(db_data):
-    st.title("👤 내 정보 (My Profile)")
+    st.title("📊 학습 대시보드 (Dashboard)")
     username = st.session_state.username
     role = st.session_state.user_role
     
-    # [권한 체크] 유예생/공인회계사(비/무료)는 일부 탭 제한
+    # [권한 체크] 유예생/공인회계사(비/무료)는 일부 기능 제한
     is_paid_or_admin = role in ['PRO', 'ADMIN']
     
-    if role == 'GUEST':
-        stats = {'total_score': st.session_state.exp, 'solved_count': int(st.session_state.exp//10), 'recent_history': []}
-    else:
-        stats = database.get_user_stats(username)
-
-    # 상단 프로필 카드
-    st.markdown(f"""
-    <div style="background-color: #3B4252; padding: 20px; border-radius: 15px; display: flex; align-items: center; gap: 20px; border: 1px solid #434C5E;">
-        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={username}" width="80" style="border-radius: 50%;">
-        <div>
-            <div style="background-color: #5E81AC; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; display: inline-block;">
-                {ROLE_NAMES.get(role, role)}
+    # 통계 데이터 로드
+    stats = database.get_user_stats(username)
+    df_all = database.get_user_history_df(username)
+    
+    # 1. 헤더 섹션 (Header)
+    c_profile, c_metrics = st.columns([1, 2])
+    
+    with c_profile:
+        st.markdown(f"""
+        <div style="background-color: #3B4252; padding: 20px; border-radius: 12px; border: 1px solid #434C5E; text-align: center;">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={username}" width="100" style="border-radius: 50%; margin-bottom: 10px;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: #ECEFF4;">{username}</div>
+            <div style="font-size: 0.9rem; color: #D8DEE9; margin-bottom: 5px;">{ROLE_NAMES.get(role, role)}</div>
+            <div style="background-color: #5E81AC; color: white; padding: 4px 12px; border-radius: 15px; display: inline-block; font-size: 0.8rem;">
+                Lv. {st.session_state.level}
             </div>
-            <h2 style="margin: 5px 0;">{username}</h2>
-            <div style="color: #88C0D0;">Lv.{st.session_state.level} (Total XP: {stats['total_score']:.0f})</div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
+        """, unsafe_allow_html=True)
+        
+    with c_metrics:
+        # 주요 지표 계산
+        total_xp = stats['total_score']
+        total_solved = len(df_all) if not df_all.empty else 0
+        avg_score = df_all['score'].mean() if not df_all.empty else 0.0
+        
+        # XP Progress (단순화: 레벨당 100XP 가정)
+        current_level_xp = total_xp % 100
+        progress_pct = int(current_level_xp)
+        
+        st.markdown(f"""
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
+                <div style="color: #D8DEE9; font-size: 0.9rem;">Total XP</div>
+                <div style="color: #88C0D0; font-size: 1.8rem; font-weight: bold;">{total_xp:.0f}</div>
+                <div style="width: 100%; background-color: #4C566A; height: 6px; border-radius: 3px; margin-top: 5px;">
+                    <div style="width: {progress_pct}%; background-color: #88C0D0; height: 6px; border-radius: 3px;"></div>
+                </div>
+                <div style="text-align: right; font-size: 0.7rem; color: #D8DEE9; margin-top: 2px;">{progress_pct}% to Lv.{st.session_state.level+1}</div>
+            </div>
+            <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
+                <div style="color: #D8DEE9; font-size: 0.9rem;">Avg. Score</div>
+                <div style="color: #A3BE8C; font-size: 1.8rem; font-weight: bold;">{avg_score:.1f} <span style="font-size: 1rem; color: #D8DEE9;">/ 10</span></div>
+            </div>
+            <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
+                <div style="color: #D8DEE9; font-size: 0.9rem;">Questions Solved</div>
+                <div style="color: #ECEFF4; font-size: 1.8rem; font-weight: bold;">{total_solved}</div>
+            </div>
+            <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border: 1px solid #434C5E;">
+                <div style="color: #D8DEE9; font-size: 0.9rem;">Status</div>
+                <div style="color: #EBCB8B; font-size: 1.8rem; font-weight: bold;">Active</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
     st.write("")
-    
-    # 탭 구성
-    tabs = ["📜 최근 기록", "📝 오답 노트", "📊 통계"]
-    tab1, tab2, tab3 = st.tabs(tabs)
-    
-    with tab1: # 최근 기록 (모두 접근 가능)
-        if stats['recent_history']:
-            df_hist = pd.DataFrame(stats['recent_history'], columns=['주제', '점수', '일시'])
-            st.dataframe(df_hist, use_container_width=True, hide_index=True)
+    st.write("")
+
+    # 2. 탭 콘텐츠
+    tab_dash, tab_notes, tab_hist = st.tabs(["📊 분석 & 차트", "📝 오답 노트", "📜 전체 이력"])
+
+    with tab_dash:
+        if df_all.empty:
+            st.info("아직 데이터가 충분하지 않습니다. 문제를 풀어보세요!")
         else:
-            st.info("기록이 없습니다.")
+            # 매핑 준비
+            std_map = {}
+            for q in db_data:
+                std_map[q['standard']] = {'part': q['part'], 'chapter': q['chapter']}
             
-    with tab2: # 오답 노트 (유료/관리자 전용)
+            df_all['part'] = df_all['standard_code'].map(lambda x: std_map.get(x, {}).get('part', 'Unknown'))
+            df_all['chapter'] = df_all['standard_code'].map(lambda x: std_map.get(x, {}).get('chapter', 'Unknown'))
+            
+            c_chart1, c_chart2 = st.columns(2)
+            
+            with c_chart1:
+                st.subheader("🎯 영역별 강점 분석 (Skill Analysis)")
+                # Part별 평균 점수 산출
+                part_scores = df_all.groupby('part')['score'].mean().to_dict()
+                fig_skill = draw_skill_chart(part_scores)
+                if fig_skill: st.pyplot(fig_skill, use_container_width=True)
+                else: st.info("데이터 부족")
+                
+            with c_chart2:
+                st.subheader("📅 최근 성취도")
+                # 최근 10개 추이 line chart
+                recent_df = df_all.sort_values("created_at").tail(10)
+                st.line_chart(recent_df, x='created_at', y='score', color='#5E81AC')
+            
+            # 약점 분석
+            st.subheader("💊 집중 보완이 필요한 챕터 (Weakest Chapters)")
+            chap_avg = df_all.groupby('chapter')['score'].mean().sort_values().head(3)
+            for ch, sc in chap_avg.items():
+                st.markdown(f"- **{ch}**: 평균 {sc:.1f}점")
+
+    with tab_notes:
         if not is_paid_or_admin:
             st.warning("🔒 오답 노트는 '등록공인회계사(유료회원)' 전용 기능입니다.")
         else:
@@ -332,59 +444,25 @@ def render_profile(db_data):
             if notes_df.empty:
                 st.info("오답 노트가 비어있습니다.")
             else:
-                # 빠른 조회를 위한 Question -> Model Answer 매핑 생성
                 q_map = {q['question']['description']: q['answer_data']['model_answer'] for q in db_data}
                 
                 for idx, row in notes_df.iterrows():
-                    # 모범 답안 찾기 및 포맷팅
-                    m_ans = q_map.get(row['question'], "모범답안을 찾을 수 없습니다.")
-                    if isinstance(m_ans, list):
-                        m_ans_str = "<br>• ".join(m_ans)
-                        m_ans_str = "• " + m_ans_str
-                    else:
-                        m_ans_str = str(m_ans).replace('\n', '<br>')
-
-                    # 카드 형태로 표시
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="card" style="padding: 15px;">
-                            <div style="display:flex; justify-content:space-between;">
-                                <span style="color:#88C0D0; font-weight:bold;">{row['standard_code']}</span>
-                                <span style="color:#D8DEE9; font-size:0.8rem;">{row['created_at']}</span>
-                            </div>
-                            <div style="margin: 10px 0; font-size:1.1rem;">Q. {row['question']}</div>
-                            <div style="background:#2E3440; padding:10px; border-radius:5px; color:#A3BE8C; border-left: 3px solid #A3BE8C;">✅ 모범 답안:<br>{m_ans_str}</div>
-                            <div style="text-align:right; margin-top:5px; font-weight:bold; color:#BF616A;">점수: {row['score']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"제거", key=f"del_{row['id']}"):
+                    m_ans = q_map.get(row['question'], "데이터 없음")
+                    m_ans_str = str(m_ans).replace('\n', '<br>') if not isinstance(m_ans, list) else ("• " + "<br>• ".join(m_ans))
+                    
+                    with st.expander(f"[{row['standard_code']}] {row['question'][:30]}... (점수: {row['score']})"):
+                        st.markdown(f"**Q. {row['question']}**")
+                        st.markdown(f"<div style='background-color:#2E3440; padding:10px; border-radius:5px;'>✅ {m_ans_str}</div>", unsafe_allow_html=True)
+                        st.caption(f"작성일: {row['created_at']}")
+                        if st.button("삭제", key=f"del_note_{row['id']}"):
                             database.delete_review_note(row['id'])
                             st.rerun()
 
-    with tab3: # 통계 (유료/관리자 전용)
-        if not is_paid_or_admin:
-            st.warning("🔒 상세 통계는 '등록공인회계사(유료회원)' 전용 기능입니다.")
+    with tab_hist:
+        if df_all.empty:
+            st.info("기록이 없습니다.")
         else:
-            df_all = database.get_user_history_df(username)
-            if df_all.empty:
-                st.info("데이터가 부족합니다.")
-            else:
-                # 데이터 매핑 (Standard -> Part/Chapter)
-                # db_data를 순회하며 매핑 테이블 생성 (속도 최적화를 위해 캐싱 권장되나 여기선 직접 처리)
-                std_map = {}
-                for q in db_data:
-                    std_map[q['standard']] = {'part': q['part'], 'chapter': q['chapter']}
-                
-                df_all['part'] = df_all['standard_code'].map(lambda x: std_map.get(x, {}).get('part', 'Unknown'))
-                df_all['chapter'] = df_all['standard_code'].map(lambda x: std_map.get(x, {}).get('chapter', 'Unknown'))
-                
-                # 그래프 1: Part별 평균
-                st.subheader("PART별 평균 점수")
-                part_avg = df_all.groupby('part')['score'].mean()
-                st.bar_chart(part_avg, color="#88C0D0")
-                
-                # 그래프 2: Chapter별 평균
-                st.subheader("Chapter별 평균 점수")
+            st.dataframe(df_all[['standard_code', 'score', 'created_at']].sort_values('created_at', ascending=False), use_container_width=True, hide_index=True)
                 chap_avg = df_all.groupby('chapter')['score'].mean()
                 st.bar_chart(chap_avg, color="#5E81AC")
 
