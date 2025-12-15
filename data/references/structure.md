@@ -4,8 +4,8 @@ This file documents the current structure of Parts, Chapters, and Standards used
 
 ## PART1 회계감사의 기초
 
-- **ch1~2 회계감사의 전제조건**: 100, 200, 220, 250
-- **ch3 감사업무의 체결과 해지**: 210
+- **ch1~2 회계감사의 전제조건**: Ethics, 200, 220, 250
+- **ch3 감사계약의 체결**: law, 210
 - **ch4 감사절차 수행을 위한 기본개념**: 230, 320, 500, 505, 520
 
 ## PART2 감사업무의 시작

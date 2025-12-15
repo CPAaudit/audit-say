@@ -24,7 +24,7 @@ def login_user(username, password):
         
         user = res.data[0]
         if user['password'] == password:
-            return [user['username'], user['password'], user['role'], user['level'], user['exp']]
+            return user
         else:
             return None # 비번 불일치
     except Exception:
@@ -161,3 +161,7 @@ def get_user_history_df(username):
         return pd.DataFrame(res.data)
     except Exception:
         return pd.DataFrame()
+
+# [Alias for Home.py compatibility]
+verify_user = login_user
+create_user = register_user
