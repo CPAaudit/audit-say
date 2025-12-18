@@ -1,3 +1,4 @@
+
 import streamlit as st
 import json
 import os
@@ -9,17 +10,15 @@ import google.generativeai as genai
 import random
 import time
 
-
-
 # [상수] 등급 정의 및 표시명
 ROLE_NAMES = {
-    'GUEST': '유예생 (비회원)',
-    'MEMBER': '공인회계사 (무료)',
-    'PRO': '등록공인회계사 (유료)',
+    'GUEST': '비예우(비회원)',
+    'MEMBER': '공인회계사(무료)',
+    'PRO': '등록공인회계사(유료)',
     'ADMIN': '관리자'
 }
 
-# [한글 폰트 설정] (Matplotlib)
+# [폰트 설정] (Matplotlib)
 import platform
 system_name = platform.system()
 font_path = "c:/Windows/Fonts/malgun.ttf" if system_name == 'Windows' else "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
@@ -168,86 +167,73 @@ def get_standard_sort_key(code):
 def calculate_matched_count(user_ans, keywords):
     if not user_ans or not keywords: return 0
     user_ans_norm = user_ans.replace(' ', '').lower()
-    return sum(1 for kw in keywords if kw.replace(' ', '').lower() in user_ans_norm)
+    count = 0
+    for k in keywords:
+        k_norm = k.replace(' ', '').lower()
+        if k_norm in user_ans_norm: count += 1
+    return count
 
-def grade_with_ai_model(q_text, u_ans, a_data, std_code, api_key):
-    if not u_ans or len(u_ans.strip()) < 5: return {"score": 0.0, "evaluation": "답안이 너무 짧습니다. (최소 5자 이상)"}
-    
-    keywords = a_data.get('keywords', [])
-    matched_count = calculate_matched_count(u_ans, keywords)
-    
-    if matched_count < 3:
-        return {
-            "score": 0.0, 
-            "evaluation": f"📉 키워드가 부족합니다. (현재 {matched_count}개 / 최소 3개 필요)\n핵심 키워드를 포함하여 다시 작성해주세요."
-        }
-    
-    # 기준서 참고 로직 제거 (사용자 요청: 모범답안 위주 채점 & 속도 향상)
-    ref_text = "기준서 참고 생략 (모범답안 기준 채점)"
-
-    # Retry Logic Configuration (Removed unused retry variables)
-    # max_retries = 3
-    # base_delay = 2  # seconds
+def grade_batch(items, api_key):
+    """
+    Items: list of dict {'id': int, 'q': str, 'a': str, 'm': str}
+    Returns: dict {id: {'score': float, 'evaluation': str}}
+    """
+    if not items: return {}
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-lite')
-
-        model_answer = a_data.get('model_answer', "")
-        if isinstance(model_answer, list):
-             model_answer_str = "\n".join(model_answer)
-        else:
-             model_answer_str = str(model_answer)
-
-        sys_prompt = f"""
-        Role: Strict Auditor.
-        Task: Grade user answer based on model answer. 0-10 score.
-        Criteria: Exact terminology required. Logic must be sound.
-
-        Input:
-        Q: {q_text}
-        User: {u_ans}
-        Model: {model_answer_str}
-
-        Output JSON Schema:
-        {{
-            "score": number, 
-            "feedback": "Concise feedback (max 100 chars)"
-        }}
-        """
+        # User requested gemini-2.5-flash-lite
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
+        # optimized batch prompt
+        prompt_lines = [
+            "Role: Strict Auditor. Task: Grade user answers. 0-10 score.",
+            "Output JSON list: [{'id': id, 'score': number, 'feedback': 'Concise feedback (max 100 chars)'}]",
+            "---"
+        ]
+        
+        for item in items:
+            p_line = f"ID: {item['id']}\nQ: {item['q']}\nMy Ans: {item['a']}\nModel Ans: {item['m']}\n---"
+            prompt_lines.append(p_line)
+            
+        full_prompt = "\n".join(prompt_lines)
+
+        # 40s timeout for batch
+        # Using generate_content
+        res = model.generate_content(
+            full_prompt, 
+            generation_config={"response_mime_type": "application/json", "temperature": 0.0},
+            request_options={'timeout': 40}
+        )
+        
+        # Parse output
         try:
-            # 30-second timeout, JSON Mode, Temperature 0, User-Agent removed (not needed for Gemini SDK)
-            res = model.generate_content(
-                sys_prompt, 
-                generation_config={"response_mime_type": "application/json", "temperature": 0.0},
-                request_options={'timeout': 30}
-            )
-            ai_res = json.loads(res.text)
+            # Handle potential markdown wrapping
+            text = res.text.strip()
+            if text.startswith("```json"): text = text[7:]
+            if text.endswith("```"): text = text[:-3]
             
-            final_score = float(ai_res.get('score', 0))
-            final_eval = ai_res.get('feedback', '피드백 없음')
+            result_list = json.loads(text)
             
-            return {"score": round(final_score, 1), "evaluation": final_eval}
-        
+            output_map = {}
+            for r in result_list:
+                output_map[r['id']] = {
+                    "score": float(r.get('score', 0)),
+                    "evaluation": r.get('feedback', '피드백 없음')
+                }
+            return output_map
+
         except Exception as e:
-            err_msg = str(e)
-            if "504" in err_msg or "Deadline Exceeded" in err_msg or "timeout" in err_msg.lower():
-                 return {
-                    "score": 0.0, 
-                    "evaluation": "⏳ AI 채점 응답 시간이 초과되었습니다. (30초)\n\nAI 응답이 늦어지고 있습니다. 아래 **모범 답안**을 참고하여 스스로 점검해보세요."
-                }
-            if "429" in err_msg:
-                 return {
-                    "score": 0.0, 
-                    "evaluation": "⚠️ AI 요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (429)"
-                }
-            raise e
+            # Json parse fail fallback
+            return {i['id']: {"score": 0.0, "evaluation": f"채점 형식 오류: {str(e)}"} for i in items}
 
-    except Exception as e: 
-        return {"score": 0.0, "evaluation": f"AI 채점 실패: {str(e)}"}
-
-
+    except Exception as e:
+        err_msg = str(e)
+        fallback_msg = f"일시적 오류: {err_msg}"
+        if "timeout" in err_msg.lower(): fallback_msg = "⏳ AI 응답 시간 초과 (Batch)"
+        elif "429" in err_msg: fallback_msg = "⚠️ 요청량 초과 (잠시 후 시도)"
+        
+        return {i['id']: {"score": 0.0, "evaluation": fallback_msg} for i in items}
 
 def draw_target(score):
     fig, ax = plt.subplots(figsize=(4, 4))

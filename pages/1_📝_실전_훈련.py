@@ -99,40 +99,66 @@ def main():
                 
                 results = [None]*len(st.session_state.quiz_list)
                 
-                def task(i, q, ans):
-                    ev = utils.grade_with_ai_model(q['question']['description'], ans, q['answer_data'], q['standard'], api_key)
-                    return i, {"q": q, "ans": ans, "eval": ev}
+                # [Batch Grading Logic]
+                batch_items = []
+                for idx, q in enumerate(st.session_state.quiz_list):
+                    ans = st.session_state.answers.get(q['question']['title'], "")
+                    if not ans or len(ans.strip()) < 5:
+                        results[idx] = {
+                            "q": q, "ans": ans, 
+                            "eval": {"score": 0.0, "evaluation": "답안이 너무 짧습니다. (최소 5자 이상)"}
+                        }
+                    else:
+                        batch_items.append({
+                            'id': idx,
+                            'q': q['question']['description'],
+                            'a': ans,
+                            'm': q['answer_data'].get('model_answer', '')
+                        })
                 
-                prog_bar = st.progress(0, text="채점 및 분석 중...")
-                total_q = len(st.session_state.quiz_list)
-                done_cnt = 0
+                if batch_items:
+                    prog_bar = st.progress(0.1, text="AI 채점 진행 중... (일괄 처리)")
+                    # Call Batch API (Gemini 2.5 Flash Lite)
+                    batch_res = utils.grade_batch(batch_items, api_key)
+                    prog_bar.progress(0.9, text="결과 저장 중...")
+                    
+                    for item in batch_items:
+                        idx = item['id']
+                        if idx in batch_res:
+                            results[idx] = {
+                                "q": st.session_state.quiz_list[idx],
+                                "ans": item['a'],
+                                "eval": batch_res[idx]
+                            }
+                        else:
+                             results[idx] = {
+                                "q": st.session_state.quiz_list[idx], 
+                                "ans": item['a'], 
+                                "eval": {"score": 0.0, "evaluation": "⚠️ 채점 누락 (오류)"}
+                            }
                 
-                # Concurrency Limit: max_workers=10 for speed
-                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as exc:
-                    futures = [exc.submit(task, i, q, st.session_state.answers[q['question']['title']]) for i, q in enumerate(st.session_state.quiz_list)]
-                    for f in concurrent.futures.as_completed(futures):
-                        i, res = f.result()
-                        results[i] = res
-                        
-                        done_cnt += 1
-                        prog_bar.progress(done_cnt / total_q, text=f"채점 중... ({done_cnt}/{total_q})")
-                        
-                        if user_role != 'GUEST':
-                            database.save_quiz_result(st.session_state.username, res['q']['standard'], res['eval']['score'])
-                            if user_role in ['PRO', 'ADMIN'] and res['eval']['score'] <= 5.0:
-                                database.save_review_note(
-                                    st.session_state.username, 
-                                    res['q']['part'],
-                                    res['q']['chapter'],
-                                    res['q']['standard'],
-                                    res['q']['question']['title'],
-                                    res['q']['question']['description'],
-                                    res['q']['answer_data']['model_answer'],
-                                    res['ans'],
-                                    res['eval']['score']
-                                )
+                # Check for None and Save
+                for i, r in enumerate(results):
+                    if r is None:
+                         r = {"q": st.session_state.quiz_list[i], "ans": "", "eval": {"score": 0.0, "evaluation": "오류"}}
+                         results[i] = r
+
+                    if user_role != 'GUEST':
+                        database.save_quiz_result(st.session_state.username, r['q']['standard'], r['eval']['score'])
+                        if user_role in ['PRO', 'ADMIN'] and r['eval']['score'] <= 5.0:
+                            database.save_review_note(
+                                st.session_state.username, 
+                                r['q']['part'],
+                                r['q']['chapter'],
+                                r['q']['standard'],
+                                r['q']['question']['title'],
+                                r['q']['question']['description'],
+                                r['q']['answer_data']['model_answer'],
+                                r['ans'],
+                                r['eval']['score']
+                            )
                 
-                prog_bar.empty()
+                if 'prog_bar' in locals(): prog_bar.empty()
 
                 st.session_state.results = results
                 st.session_state.review_idx = 0
