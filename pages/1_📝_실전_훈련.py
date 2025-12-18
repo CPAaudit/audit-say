@@ -109,11 +109,14 @@ def main():
                             "eval": {"score": 0.0, "evaluation": "답안이 너무 짧습니다. (최소 5자 이상)"}
                         }
                     else:
+                        # Fetch reference text
+                        ref_text = utils.load_reference_text(q['standard'])
                         batch_items.append({
                             'id': idx,
                             'q': q['question']['description'],
                             'a': ans,
-                            'm': q['answer_data'].get('model_answer', '')
+                            'm': q['answer_data'].get('model_answer', ''),
+                            'r': ref_text
                         })
                 
                 if batch_items:

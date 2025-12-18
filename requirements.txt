@@ -2,9 +2,8 @@ streamlit
 pandas
 matplotlib
 numpy
-google-generativeai
+google-genai
 bcrypt
 streamlit-option-menu
 supabase
-openai
 

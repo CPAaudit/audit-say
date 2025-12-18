@@ -6,7 +6,7 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import numpy as np
-import google.generativeai as genai
+from google import genai
 import random
 import time
 
@@ -173,6 +173,7 @@ def calculate_matched_count(user_ans, keywords):
         if k_norm in user_ans_norm: count += 1
     return count
 
+
 def grade_batch(items, api_key):
     """
     Items: list of dict {'id': int, 'q': str, 'a': str, 'm': str}
@@ -181,29 +182,48 @@ def grade_batch(items, api_key):
     if not items: return {}
 
     try:
-        genai.configure(api_key=api_key)
-        # User requested gemini-2.5-flash-lite
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        # User requested google-genai SDK
+        client = genai.Client(api_key=api_key)
         
-        # optimized batch prompt
+        # optimized batch prompt with user's specific criteria
         prompt_lines = [
-            "Role: Strict Auditor. Task: Grade user answers. 0-10 score.",
-            "Output JSON list: [{'id': id, 'score': number, 'feedback': 'Concise feedback (max 100 chars)'}]",
+
+            "당신은 회계감사 답안 채점관입니다.",
+            "제공된 모범답안 또는 회계감사 기준서를 기준으로 사용자 답안을 평가하여 0~10점 사이로 채점하세요.",
+            "",
+            "[채점 기준: 전문용어 정밀성]",
+            "1. **전문용어 사용 필수**: 모범답안 또는 기준서상의 정확한 용어를 사용했는지 엄격하게 확인하십시오.",
+            "2. **유의어 감점**: 의미가 통하더라도 '정확한 용어'가 아니면 감점하십시오.",
+            "3. **문맥과 논리**: 문맥과 논리가 정확해야 합니다.",
+            "",
+            "[출력 형식]",
+            "반드시 마크다운 태그 없이 순수 **JSON 리스트** 포맷으로만 출력하시오.",
+            "[{'id': id, 'score': 0~10숫자, 'feedback': '부족한 점: ... / 잘한 점: ... (100자 이내)'}]",
             "---"
         ]
         
         for item in items:
-            p_line = f"ID: {item['id']}\nQ: {item['q']}\nMy Ans: {item['a']}\nModel Ans: {item['m']}\n---"
+            p_line = (
+                f"ID: {item['id']}\n"
+                f"문제: {item['q']}\n"
+                f"사용자 답안: {item['a']}\n"
+                f"모범 답안: {item['m']}\n"
+                f"회계감사 기준서: {item.get('r', '참고 기준서 없음')}\n"
+                f"---\n"
+            )
             prompt_lines.append(p_line)
             
         full_prompt = "\n".join(prompt_lines)
 
         # 40s timeout for batch
-        # Using generate_content
-        res = model.generate_content(
-            full_prompt, 
-            generation_config={"response_mime_type": "application/json", "temperature": 0.0},
-            request_options={'timeout': 40}
+        # New SDK usage: client.models.generate_content
+        res = client.models.generate_content(
+            model='gemini-2.5-flash-lite',
+            contents=full_prompt,
+            config={
+                'response_mime_type': 'application/json',
+                'temperature': 0.0
+            }
         )
         
         # Parse output
