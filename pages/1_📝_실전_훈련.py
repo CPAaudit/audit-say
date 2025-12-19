@@ -119,19 +119,19 @@ def main():
                                 "eval": {"score": 0.0, "evaluation": f"핵심 키워드 부족 (4개 미만 감지됨: {matched_cnt}개). 조금 더 구체적으로 작성해 주세요."}
                             }
                         else:
-                        # [Optimization] Use 'explanation' and 'keywords' directly from data
-                        ans_data = q['answer_data']
-                        m_ans = ans_data.get('model_answer', [])
-                        m_str = "\n".join(m_ans) if isinstance(m_ans, list) else str(m_ans)
-                        
-                        batch_items.append({
-                            'id': idx,
-                            'q': q['question']['title'] + " - " + q['question']['description'],
-                            'a': ans,
-                            'm': m_str,
-                            'k': ans_data.get('keywords', []),    # Keywords
-                            'r': ans_data.get('explanation', "참고 설명 없음")  # Explanation
-                        })
+                            # [Optimization] Use 'explanation' and 'keywords' directly from data
+                            ans_data = q['answer_data']
+                            m_ans = ans_data.get('model_answer', [])
+                            m_str = "\n".join(m_ans) if isinstance(m_ans, list) else str(m_ans)
+                            
+                            batch_items.append({
+                                'id': idx,
+                                'q': q['question']['title'] + " - " + q['question']['description'],
+                                'a': ans,
+                                'm': m_str,
+                                'k': ans_data.get('keywords', []),    # Keywords
+                                'r': ans_data.get('explanation', "참고 설명 없음")  # Explanation
+                            })
                 
                 if batch_items:
                     prog_bar = st.progress(0.1, text="AI 채점 진행 중... (일괄 처리)")
