@@ -161,7 +161,6 @@ def main():
                          results[i] = r
 
                     if user_role != 'GUEST':
-                        database.save_quiz_result(st.session_state.username, r['q']['standard'], r['eval']['score'])
                         if user_role in ['PRO', 'ADMIN'] and r['eval']['score'] <= 5.0:
                             database.save_review_note(
                                 st.session_state.username, 

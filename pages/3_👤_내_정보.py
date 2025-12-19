@@ -20,7 +20,8 @@ def main():
     
     # Stats Load
     stats = database.get_user_stats(username)
-    df_all = database.get_user_history_df(username)
+    import pandas as pd
+    df_all = pd.DataFrame()  # quiz_history 테이블 제거됨
     
     # Header
     c_profile, c_metrics = st.columns([1, 2])
