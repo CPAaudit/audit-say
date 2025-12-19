@@ -103,12 +103,22 @@ def main():
                 batch_items = []
                 for idx, q in enumerate(st.session_state.quiz_list):
                     ans = st.session_state.answers.get(q['question']['title'], "")
-                    if not ans or len(ans.strip()) < 5:
+                    if not ans:
                         results[idx] = {
                             "q": q, "ans": ans, 
-                            "eval": {"score": 0.0, "evaluation": "답안이 너무 짧습니다. (최소 5자 이상)"}
+                            "eval": {"score": 0.0, "evaluation": "답안을 입력해주세요."}
                         }
                     else:
+                        # [Gateway] Check Keyword Count (Min 4)
+                        keywords = q['answer_data'].get('keywords', [])
+                        matched_cnt = utils.calculate_matched_count(ans, keywords)
+                        
+                        if matched_cnt < 4:
+                             results[idx] = {
+                                "q": q, "ans": ans, 
+                                "eval": {"score": 0.0, "evaluation": f"핵심 키워드 부족 (4개 미만 감지됨: {matched_cnt}개). 조금 더 구체적으로 작성해 주세요."}
+                            }
+                        else:
                         # [Optimization] Use 'explanation' and 'keywords' directly from data
                         ans_data = q['answer_data']
                         m_ans = ans_data.get('model_answer', [])
@@ -225,7 +235,7 @@ def main():
             """, unsafe_allow_html=True)
 
             st.markdown("### 🤖 AI 피드백")
-            st.success(ev['evaluation'])
+            st.markdown(ev['evaluation'])
             
         with c_right:
             st.pyplot(utils.draw_target(ev['score']), use_container_width=True)
