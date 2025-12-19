@@ -94,7 +94,12 @@ def main():
                 st.session_state.answers[q['question']['title']] = st.text_area(f"답안 {idx+1}", height=100, label_visibility="collapsed")
             
             if st.form_submit_button("제출", type="primary", use_container_width=True):
-                try: api_key = st.secrets["GOOGLE_API_KEY"]
+                try: 
+                    api_key = st.secrets["GOOGLE_API_KEY"]
+                    # [Safety Check] Ensure API Key is a string, not a dict (common TOML error)
+                    if not isinstance(api_key, str):
+                        st.error("⚠️ 설정 오류: GOOGLE_API_KEY가 문자열이 아닙니다.\nsecrets.toml 파일에서 [GOOGLE_API_KEY] 헤더 대신\nGOOGLE_API_KEY = 'YOUR_KEY' 형태로 작성했는지 확인해주세요.")
+                        return
                 except: st.error("API Key 설정 필요 (GOOGLE_API_KEY)"); return
                 
                 results = [None]*len(st.session_state.quiz_list)
