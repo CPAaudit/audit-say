@@ -8,7 +8,7 @@ import matplotlib.font_manager as fm
 import numpy as np
 from google import genai
 import random
-import time
+
 
 # [상수] 등급 정의 및 표시명
 ROLE_NAMES = {
@@ -122,13 +122,7 @@ def load_db():
     except Exception as e:
         return []
 
-@st.cache_data(ttl=3600)
-def load_reference_text(standard_code):
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_dir, "data", "references", f"{standard_code}.md")
-    try:
-        with open(file_path, "r", encoding="utf-8") as f: return f.read()
-    except: return "참고 기준서 없음"
+
 
 def get_counts(data):
     counts = { 'parts': {}, 'chapters': {}, 'standards': {} }

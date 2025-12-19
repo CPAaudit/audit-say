@@ -1,7 +1,7 @@
 import streamlit as st
 import utils
 import database
-import concurrent.futures
+
 
 # [초기 설정]
 st.set_page_config(page_title="실전 훈련 | Audit Rank", page_icon="📝", layout="wide")
