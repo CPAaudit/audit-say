@@ -128,10 +128,10 @@ def main():
             st.page_link("pages/3_👤_내_정보.py", label="내 정보 바로가기", icon="📊", use_container_width=True)
 
         # Admin Link
-        if role == 'ADMIN':
+        if st.session_state.user_role == 'ADMIN':
             st.divider()
             st.subheader("관리자 메뉴")
-            st.page_link("pages/9_🛠️_관리자.py", label="관리자 페이지 이동", icon="🛠️")
+            st.page_link("pages/9_⚙️_관리자.py", label="관리자 페이지 이동", icon="⚙️")
             
         # Logout (Clear Session)
         st.divider()
