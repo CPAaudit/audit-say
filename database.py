@@ -274,6 +274,36 @@ def fetch_all_questions():
         print(f"Error fetching questions: {e}")
         return []
 
+def add_question(data):
+    """Inserts a new question into audit_questions."""
+    try:
+        init_db().table("audit_questions").insert(data).execute()
+        return True
+    except Exception as e:
+        print(f"Add Question Error: {e}")
+        return False
+
+def update_question(q_id, data):
+    """Updates an existing question."""
+    try:
+        # Prevent ID update just in case
+        if 'id' in data: del data['id'] 
+        init_db().table("audit_questions").update(data).eq("id", q_id).execute()
+        return True
+    except Exception as e:
+        print(f"Update Question Error: {e}")
+        return False
+
+def delete_question(q_id):
+    """Deletes a question."""
+    try:
+        init_db().table("audit_questions").delete().eq("id", q_id).execute()
+        return True
+    except Exception as e:
+        print(f"Delete Question Error: {e}")
+        return False
+
+
 def get_leaderboard_data():
     try:
         res = init_db().table("users").select("username, role, level, exp").order("exp", desc=True).limit(10).execute()

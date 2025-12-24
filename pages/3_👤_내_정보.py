@@ -69,7 +69,7 @@ def main():
     st.write("")
     st.write("")
 
-    tab_dash, tab_notes, tab_hist = st.tabs(["📊 분석 & 차트", "📝 오답 노트", "📜 전체 이력"])
+    tab_dash, tab_hist = st.tabs(["📊 분석 & 차트", "📜 전체 이력"])
 
     with tab_dash:
         if df_all.empty:
@@ -102,60 +102,11 @@ def main():
             for ch, sc in chap_avg.items():
                 st.markdown(f"- **{ch}**: 평균 {sc:.1f}점")
 
-    with tab_notes:
-        if not is_paid_or_admin:
-            st.warning("🔒 오답 노트는 '등록공인회계사' 전용 기능입니다.")
-        else:
-            notes_df = database.get_user_review_notes(username, user_id=st.session_state.get('user_id'))
-            if notes_df.empty:
-                st.info("오답 노트가 비어있습니다.")
-            else:
-                notes_df['part'] = notes_df['part'].fillna('Unknown')
-                notes_df['chapter'] = notes_df['chapter'].fillna('Unknown')
-                parts = sorted(notes_df['part'].unique())
-                
-                for part in parts:
-                    with st.expander(f"📂 {part}", expanded=False):
-                        part_df = notes_df[notes_df['part'] == part]
-                        chapters = sorted(part_df['chapter'].unique(), key=utils.get_chapter_sort_key)
-                        
-                        for chap in chapters:
-                            st.markdown(f"**[{chap}]**")
-                            chap_df = part_df[part_df['chapter'] == chap]
-                            
-                            for idx, row in chap_df.iterrows():
-                                m_ans = row['model_answer']
-                                if not m_ans: m_ans = "데이터 없음"
-                                
-                                if isinstance(m_ans, list):
-                                     m_ans_str = "• " + "<br>• ".join(m_ans)
-                                elif isinstance(m_ans, str) and m_ans.startswith('['):
-                                     try:
-                                         parsed = json.loads(m_ans.replace("'", '"'))
-                                         if isinstance(parsed, list):
-                                             m_ans_str = "• " + "<br>• ".join(parsed)
-                                         else:
-                                             m_ans_str = str(m_ans).replace('\n', '<br>')
-                                     except:
-                                         m_ans_str = str(m_ans).replace('\n', '<br>')
-                                else:
-                                     m_ans_str = str(m_ans).replace('\n', '<br>')
-
-                                with st.expander(f"[{row['standard_code']}] {row['question_title']} (점수: {row['score']})"):
-                                    st.markdown(f"**Q. {row['question_description']}**")
-                                    st.markdown(f"**내 답안:** {row['user_answer']}")
-                                    if row.get('explanation'):
-                                         st.info(f"💡 해설: {row['explanation']}")
-                                    st.markdown(f"<div style='background-color:#2E3440; padding:10px; border-radius:5px; margin-top:5px;'>✅ {m_ans_str}</div>", unsafe_allow_html=True)
-                                    st.caption(f"작성일: {row['created_at']}")
-                                    if st.button("삭제", key=f"del_note_{row['id']}"):
-                                        database.delete_review_note(row['id'])
-                                        st.rerun()
-
     with tab_hist:
         if df_all.empty:
             st.info("기록이 없습니다.")
         else:
+            # Dropdown Filter
             st.dataframe(df_all[['standard_code', 'score', 'created_at']].sort_values('created_at', ascending=False), use_container_width=True, hide_index=True)
 
 if __name__ == "__main__":
