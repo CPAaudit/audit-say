@@ -297,7 +297,7 @@ def update_user_role(username, new_role):
 def fetch_all_questions():
     """Fetches all questions from the audit_questions table."""
     try:
-        res = init_db().table("audit_questions").select("*").execute()
+        res = init_db().table("audit_questions").select("*").order("id", desc=False).execute()
         return res.data
     except Exception as e:
         print(f"Error fetching questions: {e}")

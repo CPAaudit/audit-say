@@ -37,7 +37,7 @@ def main():
     parts = sorted(notes_df['part'].unique())
     
     for part in parts:
-        with st.expander(f"📂 {part}", expanded=True):
+        with st.expander(f"📂 {part}", expanded=False):
             part_df = notes_df[notes_df['part'] == part]
             chapters = sorted(part_df['chapter'].unique(), key=utils.get_chapter_sort_key)
             
