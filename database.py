@@ -207,6 +207,9 @@ def save_review_note(username, title, user_answer, score, user_id=None):
                     question_id = q_res.data[0]['id']
             except: pass
 
+        if question_id is None:
+             st.warning(f"Warning: Question ID not found for title '{title}'. Note might be saved without link.")
+
         data = {
             "username": username,
             "user_id": user_id,
@@ -217,7 +220,9 @@ def save_review_note(username, title, user_answer, score, user_id=None):
             "created_at": datetime.now().isoformat()
         }
         client.table("review_notes").insert(data).execute()
-    except Exception as e: print(f"Error: {e}")
+    except Exception as e: 
+        st.error(f"Save Note Error: {e}")
+        print(f"Error: {e}")
 
 def get_user_review_notes(username, user_id=None):
     try:
