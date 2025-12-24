@@ -21,6 +21,7 @@ def main():
     
     # Session State Init
     if 'username' not in st.session_state: st.session_state.username = None
+    if 'user_id' not in st.session_state: st.session_state.user_id = None
     if 'user_role' not in st.session_state: st.session_state.user_role = None
     if 'exp' not in st.session_state: st.session_state.exp = 0.0
     if 'level' not in st.session_state: st.session_state.level = 1
@@ -45,6 +46,7 @@ def main():
                     user = database.login_user(email, upw)
                     if user:
                         st.session_state.username = user['username']
+                        st.session_state.user_id = user.get('auth_id')
                         st.session_state.user_role = user.get('role', 'MEMBER')
                         st.session_state.level = user.get('level', 1)
                         st.session_state.exp = user.get('exp', 0)
@@ -135,6 +137,7 @@ def main():
         st.divider()
         if st.button("로그아웃", type="secondary"):
             st.session_state.username = None
+            st.session_state.user_id = None
             st.session_state.user_role = None
             # Do we need to sign out from Supabase client too? 
             # Client usually handles it, but creating new client instance clears local state mostly in Streamlit context.

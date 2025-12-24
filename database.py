@@ -120,15 +120,9 @@ def _check_username_exists(client, username):
     return len(res.data) > 0
 
 def _create_public_profile(client, user_id, email, username):
-    # Check if 'email' column exists in public.users? 
-    # Based on previous code, likely columns: username, password, level, exp, role.
-    # We will exclude password. We might need to add keys if schema is strict.
-    # We will try to upsert based on username if needed, but here we insert new.
-    # We should honestly add 'user_id' to this table to link properly.
-    # For now, we'll try to insert 'username', 'level', 'exp', 'role'.
-    # If we can, we also insert 'email'.
-    
+    # Public Profile Creation with strict Auth ID linking
     new_user = {
+        "id": user_id,
         "username": username,
         "role": "MEMBER",
         "level": 1,
@@ -142,30 +136,12 @@ def _create_public_profile(client, user_id, email, username):
         print(f"Profile Creation Error: {e}")
 
 def _get_combined_profile(client, auth_user):
-    # Try to find profile by email (if supported) or we guess username?
-    # Since we don't strictly link ID in public.users (yet), we might have trouble finding the right user 
-    # if we only have auth_user.id.
-    # Assumption: The user just logged in. 
-    # If we created the profile with specific username, we can't easily reverse lookup unless we stored Auth ID or Email in public.users.
-    # CRITICAL: We MUST rely on 'email' if stored, or we force username match.
-    # Let's try to fetch by email if the column exists (likely if I modified previous code).
-    # If not, we have a disconnect.
-    # Workaround: For now, we will return a minimal profile from Auth Data if DB lookup fails.
-    
-    # Try fetch by username from metadata?
-    username = auth_user.user_metadata.get('username')
-    
-    # If standard email login, we should have stored username in metadata.
-    if not username:
-        # Fallback for old users or social login without metadata
-        username = auth_user.email.split('@')[0] 
-
-    # Fetch public stats
+    # Robust profile fetching via Auth ID (UUID)
     try:
-        res = client.table("users").select("*").eq("username", username).execute()
+        # Prmary: Match by UUID (Foreign Key)
+        res = client.table("users").select("*").eq("id", auth_user.id).execute()
         if res.data:
             profile = res.data[0]
-            # Merge
             return {
                 "username": profile['username'],
                 "role": profile.get('role', 'MEMBER'),
@@ -174,10 +150,31 @@ def _get_combined_profile(client, auth_user):
                 "email": auth_user.email,
                 "auth_id": auth_user.id
             }
-    except:
-        pass
+    except Exception as e:
+        print(f"Profile Fetch Error: {e}")
     
-    # If no profile found (rare), return default
+    # Fallback/Legacy: If UUID match fails (e.g. migration lag), try username
+    # This might be removed later for stricter security.
+    username = auth_user.user_metadata.get('username')
+    if not username:
+        username = auth_user.email.split('@')[0] 
+
+    try:
+        res = client.table("users").select("*").eq("username", username).execute()
+        if res.data:
+            profile = res.data[0]
+            # Consider auto-healing (fixing the ID) here if needed
+            return {
+                "username": profile['username'],
+                "role": profile.get('role', 'MEMBER'),
+                "level": profile.get('level', 1),
+                "exp": profile.get('exp', 0),
+                "email": auth_user.email,
+                "auth_id": auth_user.id
+            }
+    except: pass
+    
+    # If really no profile found, return default
     return {
         "username": username,
         "role": "MEMBER",
@@ -195,28 +192,73 @@ def update_progress(username, level, exp):
         init_db().table("users").update({"level": level, "exp": exp}).eq("username", username).execute()
     except: pass
 
-def save_review_note(username, part, chapter, standard, title, question, model_ans, explanation, score):
+def save_review_note(username, title, user_answer, score, user_id=None):
     try:
+        client = init_db()
+        question_id = None
+        
+        # Look up Question ID
+        if title:
+            try:
+                # If audit_questions is empty, this will fail to find ID, question_id remains None.
+                # User is aware.
+                q_res = client.table("audit_questions").select("id").eq("question_title", title).execute()
+                if q_res.data:
+                    question_id = q_res.data[0]['id']
+            except: pass
+
         data = {
             "username": username,
-            "part": part,
-            "chapter": chapter,
-            "standard_code": standard,
-            "title": title,
-            "question": question,
-            "model_answer": model_ans,
-            "explanation": explanation,
+            "user_id": user_id,
+            "question_id": question_id,
+            # "explanation" column renamed to "user_answer"
+            "user_answer": user_answer, 
             "score": score,
             "created_at": datetime.now().isoformat()
         }
-        init_db().table("review_notes").insert(data).execute()
+        client.table("review_notes").insert(data).execute()
     except Exception as e: print(f"Error: {e}")
 
-def get_user_review_notes(username):
+def get_user_review_notes(username, user_id=None):
     try:
-        res = init_db().table("review_notes").select("*").eq("username", username).order("created_at", desc=True).execute()
-        return pd.DataFrame(res.data)
-    except: return pd.DataFrame()
+        client = init_db()
+        # Join with audit_questions
+        query = client.table("review_notes").select("*, audit_questions(*)").order("created_at", desc=True)
+        
+        if user_id:
+             query = query.eq("user_id", user_id)
+        else:
+             query = query.eq("username", username)
+             
+        res = query.execute()
+        data = res.data
+        
+        flattened = []
+        for item in data:
+            q = item.get('audit_questions') or {} 
+            
+            flat = item.copy()
+            if 'audit_questions' in flat: del flat['audit_questions']
+            
+            # Map Question Data (from audit_questions)
+            flat['part'] = q.get('part', 'Unknown/Deleted')
+            flat['chapter'] = q.get('chapter', 'Unknown')
+            flat['standard_code'] = q.get('standard', 'Unknown')
+            flat['title'] = q.get('question_title', 'Unknown Title')
+            flat['question'] = q.get('question_description', '(문제 내용 없음)')
+            flat['model_answer'] = q.get('model_answer', [])
+            flat['explanation'] = q.get('explanation', "해설 없음") # Official Explanation
+            
+            # item already has 'user_answer' (renamed from explanation in DB)
+            # We ensure it's accessible as 'user_answer'
+            # If the DB return key is 'user_answer', it's already in 'flat'.
+            
+            flattened.append(flat)
+            
+        return pd.DataFrame(flattened)
+    except Exception as e: 
+        print(f"Fetch Error: {e}")
+        return pd.DataFrame()
 
 def delete_review_note(note_id):
     try:

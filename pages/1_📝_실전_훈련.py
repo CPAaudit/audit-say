@@ -169,14 +169,10 @@ def main():
                         if user_role in ['PRO', 'ADMIN'] and r['eval']['score'] <= 5.0:
                             database.save_review_note(
                                 st.session_state.username, 
-                                r['q']['part'],
-                                r['q']['chapter'],
-                                r['q']['standard'],
                                 r['q']['question']['title'],
-                                r['q']['question']['description'],
-                                r['q']['answer_data']['model_answer'],
                                 r['ans'],
-                                r['eval']['score']
+                                r['eval']['score'],
+                                user_id=st.session_state.get('user_id')
                             )
                 
                 if 'prog_bar' in locals(): prog_bar.empty()
@@ -249,14 +245,10 @@ def main():
                 if st.button("오답노트 저장"):
                     database.save_review_note(
                         st.session_state.username, 
-                        q_data['part'],
-                        q_data['chapter'],
-                        q_data['standard'],
                         q_data['question']['title'],
-                        q_data['question']['description'],
-                        q_data['answer_data']['model_answer'],
                         u_ans, 
-                        ev['score']
+                        ev['score'],
+                        user_id=st.session_state.get('user_id')
                     )
                     st.toast("저장되었습니다.")
             elif user_role == 'MEMBER':

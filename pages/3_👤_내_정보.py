@@ -106,7 +106,7 @@ def main():
         if not is_paid_or_admin:
             st.warning("🔒 오답 노트는 '등록공인회계사' 전용 기능입니다.")
         else:
-            notes_df = database.get_user_review_notes(username)
+            notes_df = database.get_user_review_notes(username, user_id=st.session_state.get('user_id'))
             if notes_df.empty:
                 st.info("오답 노트가 비어있습니다.")
             else:
@@ -143,7 +143,9 @@ def main():
 
                                 with st.expander(f"[{row['standard_code']}] {row['title']} (점수: {row['score']})"):
                                     st.markdown(f"**Q. {row['question']}**")
-                                    st.markdown(f"**내 답안:** {row['explanation']}")
+                                    st.markdown(f"**내 답안:** {row['user_answer']}")
+                                    if row.get('explanation'):
+                                         st.info(f"💡 해설: {row['explanation']}")
                                     st.markdown(f"<div style='background-color:#2E3440; padding:10px; border-radius:5px; margin-top:5px;'>✅ {m_ans_str}</div>", unsafe_allow_html=True)
                                     st.caption(f"작성일: {row['created_at']}")
                                     if st.button("삭제", key=f"del_note_{row['id']}"):
