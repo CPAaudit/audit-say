@@ -6,6 +6,7 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import numpy as np
+import database
 from google import genai
 import random
 
@@ -51,7 +52,7 @@ def load_structure():
     hierarchy, name_map, part_code_map, chapter_map = {}, {}, {}, {}
     current_part = None
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    structure_path = os.path.join(base_dir, 'data', 'references', 'structure.md')
+    structure_path = os.path.join(base_dir, 'structure.md')
     try:
         with open(structure_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -90,36 +91,33 @@ def load_structure():
 
 @st.cache_data(ttl=3600)
 def load_db():
-    data = []
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, 'data')
     try:
+        data = database.fetch_all_questions()
         _, _, part_code_map, chapter_map = load_structure()
-        for filename in os.listdir(data_dir):
-            if filename.startswith('questions_PART') and filename.endswith('.json'):
-                file_path = os.path.join(data_dir, filename)
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    part_data = json.load(f)
-                    data.extend(part_data)
+        
         for q in data:
+            # Normalize part
             p_str = str(q.get('part', ''))
             p_match = re.search(r'(?:PART\s*)?(\d+)', p_str, re.IGNORECASE)
             if p_match:
                 part_num = f"PART{p_match.group(1)}"
                 q['part'] = part_code_map.get(part_num, f"PART{p_match.group(1)}")
-            c_str = str(q['chapter'])
+                
+            # Normalize chapter
+            c_str = str(q.get('chapter', ''))
             nums = re.findall(r'\d+', c_str)
             if nums:
-                # chapter normalization
                 match = re.search(r'(\d+(?:-\d+)?)', c_str)
                 if match: 
                     raw_chap = f"ch{match.group(1)}"
                 else: 
                     raw_chap = f"ch{nums[0]}"
                 q['chapter'] = chapter_map.get(raw_chap, raw_chap)
-            q['standard'] = str(q['standard'])
+                
+            q['standard'] = str(q.get('standard', ''))
         return data
     except Exception as e:
+        print(f"DB Load Error: {e}")
         return []
 
 
@@ -140,7 +138,7 @@ def get_quiz_set(data, part, chapter, standard, num_questions, exclude_titles=No
             if q['part'] == part 
             and (chapter=="전체" or q['chapter']==chapter) 
             and (standard=="전체" or q['standard']==standard) 
-            and q['question']['title'] not in exclude_titles]
+            and q['question_title'] not in exclude_titles]
     
     if not cand: return []
     if len(cand) <= num_questions: return cand

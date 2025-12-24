@@ -141,8 +141,8 @@ def main():
                                 else:
                                      m_ans_str = str(m_ans).replace('\n', '<br>')
 
-                                with st.expander(f"[{row['standard_code']}] {row['title']} (점수: {row['score']})"):
-                                    st.markdown(f"**Q. {row['question']}**")
+                                with st.expander(f"[{row['standard_code']}] {row['question_title']} (점수: {row['score']})"):
+                                    st.markdown(f"**Q. {row['question_description']}**")
                                     st.markdown(f"**내 답안:** {row['user_answer']}")
                                     if row.get('explanation'):
                                          st.info(f"💡 해설: {row['explanation']}")

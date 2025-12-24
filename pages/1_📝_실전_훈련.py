@@ -76,7 +76,7 @@ def main():
                 st.error("해당 조건의 문제가 없습니다. (또는 이미 모든 문제를 풀었습니다.)")
             else:
                 st.session_state.quiz_list = quiz_list
-                st.session_state.answers = {q['question']['title']: "" for q in quiz_list}
+                st.session_state.answers = {q['question_title']: "" for q in quiz_list}
                 st.session_state.app_state = 'SOLVING'
                 st.session_state.last_quiz_params = {
                     'part': sel_part,
@@ -90,8 +90,8 @@ def main():
     elif st.session_state.app_state == 'SOLVING':
         with st.form("ans_form"):
             for idx, q in enumerate(st.session_state.quiz_list):
-                st.markdown(f"<div class='question-box'>{q['question']['description']}</div>", unsafe_allow_html=True)
-                st.session_state.answers[q['question']['title']] = st.text_area(f"답안 {idx+1}", height=100, label_visibility="collapsed")
+                st.markdown(f"<div class='question-box'>{q['question_description']}</div>", unsafe_allow_html=True)
+                st.session_state.answers[q['question_title']] = st.text_area(f"답안 {idx+1}", height=100, label_visibility="collapsed")
             
             if st.form_submit_button("제출", type="primary", use_container_width=True):
                 try: 
@@ -107,7 +107,7 @@ def main():
                 # [Batch Grading Logic]
                 batch_items = []
                 for idx, q in enumerate(st.session_state.quiz_list):
-                    ans = st.session_state.answers.get(q['question']['title'], "")
+                    ans = st.session_state.answers.get(q['question_title'], "")
                     if not ans:
                         results[idx] = {
                             "q": q, "ans": ans, 
@@ -115,7 +115,7 @@ def main():
                         }
                     else:
                         # [Gateway] Check Keyword Count (Min 3)
-                        keywords = q['answer_data'].get('keywords', [])
+                        keywords = q.get('keywords', [])
                         matched_cnt = utils.calculate_matched_count(ans, keywords)
                         
                         if matched_cnt < 3:
@@ -125,17 +125,16 @@ def main():
                             }
                         else:
                             # [Optimization] Use 'explanation' and 'keywords' directly from data
-                            ans_data = q['answer_data']
-                            m_ans = ans_data.get('model_answer', [])
+                            m_ans = q.get('model_answer', [])
                             m_str = "\n".join(m_ans) if isinstance(m_ans, list) else str(m_ans)
                             
                             batch_items.append({
                                 'id': idx,
-                                'q': q['question']['title'] + " - " + q['question']['description'],
+                                'q': q['question_title'] + " - " + q['question_description'],
                                 'a': ans,
                                 'm': m_str,
-                                'k': ans_data.get('keywords', []),    # Keywords
-                                'r': ans_data.get('explanation', "참고 설명 없음")  # Explanation
+                                'k': keywords,    # Keywords
+                                'r': q.get('explanation', "참고 설명 없음")  # Explanation
                             })
                 
                 if batch_items:
@@ -169,7 +168,7 @@ def main():
                         if user_role in ['PRO', 'ADMIN'] and r['eval']['score'] <= 5.0:
                             database.save_review_note(
                                 st.session_state.username, 
-                                r['q']['question']['title'],
+                                r['q']['question_title'],
                                 r['ans'],
                                 r['eval']['score'],
                                 user_id=st.session_state.get('user_id')
@@ -189,7 +188,7 @@ def main():
                 
                 # Mark as solved
                 for q in st.session_state.quiz_list:
-                    st.session_state.solved_questions.add(q['question']['title'])
+                    st.session_state.solved_questions.add(q['question_title'])
 
                 st.session_state.app_state = 'REVIEW'
                 st.rerun()
@@ -215,18 +214,18 @@ def main():
         # Content
         c_left, c_right = st.columns([2, 1])
         with c_left:
-            st.info(f"Q. {q_data['question']['description']}")
+            st.info(f"Q. {q_data['question_description']}")
             u_ans_fmt = u_ans.replace('\n', '<br>')
             st.markdown(f"**내 답안:** <div style='background-color: #4C566A; padding: 10px; border-radius: 5px;'>{u_ans_fmt}</div>", unsafe_allow_html=True)
             
-            m_ans = q_data['answer_data']['model_answer']
+            m_ans = q_data['model_answer']
             if isinstance(m_ans, list):
                 m_ans_str = "<br>• ".join(m_ans)
                 m_ans_str = "• " + m_ans_str
             else:
                 m_ans_str = m_ans.replace('\n', '<br>')
                 
-            st.markdown(f"##### 💡 {q_data['question']['title']}")
+            st.markdown(f"##### 💡 {q_data['question_title']}")
             st.markdown(f"""
             <div style="background-color: #3B4252; padding: 15px; border-radius: 10px; border-left: 5px solid #A3BE8C; margin-top: 5px;">
                 <div style="color: #A3BE8C; font-weight: bold; margin-bottom: 5px;">✅ 모범 답안</div>
@@ -245,7 +244,7 @@ def main():
                 if st.button("오답노트 저장"):
                     database.save_review_note(
                         st.session_state.username, 
-                        q_data['question']['title'],
+                        q_data['question_title'],
                         u_ans, 
                         ev['score'],
                         user_id=st.session_state.get('user_id')
@@ -264,7 +263,7 @@ def main():
                     st.warning("🎉 해당 조건의 모든 문제를 다 풀었습니다!")
                 else:
                     st.session_state.quiz_list = new_quiz
-                    st.session_state.answers = {q['question']['title']: "" for q in new_quiz}
+                    st.session_state.answers = {q['question_title']: "" for q in new_quiz}
                     st.session_state.app_state = 'SOLVING'
                     st.rerun()
                     

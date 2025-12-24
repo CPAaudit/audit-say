@@ -21,7 +21,7 @@ def load_structure_simple(structure_path):
 def check_consistency():
     base_dir = r"c:\Users\cntrl\.gemini\antigravity\playground\crimson-lagoon"
     data_dir = os.path.join(base_dir, "data")
-    structure_path = os.path.join(data_dir, "references", "structure.md")
+    structure_path = os.path.join(base_dir, "structure.md")
     
     chapter_standards = load_structure_simple(structure_path)
     print("Defined structure:")

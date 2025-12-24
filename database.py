@@ -244,8 +244,8 @@ def get_user_review_notes(username, user_id=None):
             flat['part'] = q.get('part', 'Unknown/Deleted')
             flat['chapter'] = q.get('chapter', 'Unknown')
             flat['standard_code'] = q.get('standard', 'Unknown')
-            flat['title'] = q.get('question_title', 'Unknown Title')
-            flat['question'] = q.get('question_description', '(문제 내용 없음)')
+            flat['question_title'] = q.get('question_title', 'Unknown Title')
+            flat['question_description'] = q.get('question_description', '(문제 내용 없음)')
             flat['model_answer'] = q.get('model_answer', [])
             flat['explanation'] = q.get('explanation', "해설 없음") # Official Explanation
             
@@ -264,6 +264,15 @@ def delete_review_note(note_id):
     try:
         init_db().table("review_notes").delete().eq("id", note_id).execute()
     except: pass
+
+def fetch_all_questions():
+    """Fetches all questions from the audit_questions table."""
+    try:
+        res = init_db().table("audit_questions").select("*").execute()
+        return res.data
+    except Exception as e:
+        print(f"Error fetching questions: {e}")
+        return []
 
 def get_leaderboard_data():
     try:
