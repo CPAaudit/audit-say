@@ -8,9 +8,14 @@ st.set_page_config(page_title="문제 풀기 | Audit Rank", page_icon="📝", la
 utils.local_css()
 
 def main():
+    # [Guest Logic] If not logged in, treat as Guest
     if 'username' not in st.session_state or not st.session_state.username:
-        st.warning("로그인이 필요합니다.")
-        st.stop()
+        st.session_state.username = "비회원"
+        st.session_state.user_role = "GUEST"
+        st.session_state.level = 1
+        st.session_state.exp = 0
+        st.toast("👋 비회원(Guest) 모드로 진입했습니다. (기록 저장은 불가능합니다)")
+
 
     st.title("📝 문제 풀기")
     

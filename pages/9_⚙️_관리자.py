@@ -84,9 +84,21 @@ def main():
         # Load Latest
         questions = database.fetch_all_questions() # Don't use cached utils.load_db() to get fresh data
         
-        # Search
-        search_term = st.text_input("제목 검색", "")
-        filtered = [q for q in questions if search_term.lower() in q.get('question_title', '').lower()]
+        # Filter Logic
+        c_filter1, c_filter2 = st.columns([1, 2])
+        with c_filter1:
+            # Extract parts safely
+            all_parts = sorted(list(set([str(q.get('part', 'Unknown')) for q in questions])))
+            sel_part_filter = st.selectbox("Part 필터", ["전체"] + all_parts)
+            
+        with c_filter2:
+            search_term = st.text_input("제목 검색", "")
+            
+        filtered = [
+            q for q in questions 
+            if (search_term.lower() in q.get('question_title', '').lower())
+            and (sel_part_filter == "전체" or str(q.get('part')) == sel_part_filter)
+        ]
         
         if not filtered:
             st.info("검색 결과가 없습니다.")
