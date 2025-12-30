@@ -75,8 +75,11 @@ def main():
         
         if st.button("문제 풀기 시작 🚀", type="primary", use_container_width=True):
             cnt = diff_levels[sel_diff]
+            # [Fix] Map Chapter Short Code -> Full Name for DB Matching
+            target_chap = name_map.get(sel_chap, sel_chap) if sel_chap != "전체" else "전체"
+
             # Pass solved_questions as exclude_titles
-            quiz_list = utils.get_quiz_set(db_data, sel_part, sel_chap, sel_std, cnt, st.session_state.solved_questions)
+            quiz_list = utils.get_quiz_set(db_data, sel_part, target_chap, sel_std, cnt, st.session_state.solved_questions)
             if not quiz_list:
                 st.error("해당 조건의 문제가 없습니다. (또는 이미 모든 문제를 풀었습니다.)")
             else:
@@ -85,7 +88,7 @@ def main():
                 st.session_state.app_state = 'SOLVING'
                 st.session_state.last_quiz_params = {
                     'part': sel_part,
-                    'chapter': sel_chap,
+                    'chapter': target_chap,
                     'standard': sel_std,
                     'count': cnt
                 }
