@@ -225,14 +225,13 @@ def save_review_note(username, title, user_answer, score, user_id=None):
              st.warning(f"Warning: Question ID not found for title '{title}'. Note might be saved without link.")
 
         data = {
-            # "username": username, # Removed: Column does not exist
             "user_id": user_id,
             "question_id": question_id,
-            # "explanation" column renamed to "user_answer"
             "user_answer": user_answer, 
             "score": score,
             "created_at": datetime.now().isoformat()
         }
+        print(f"DEBUG: Saving review note: {data}") # Debug log
         client.table("review_notes").insert(data).execute()
         return True
     except Exception as e: 
