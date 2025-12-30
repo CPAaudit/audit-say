@@ -40,7 +40,10 @@ def main():
             
         with c2: 
             chap_opts = ["전체"] + sorted(list(hierarchy[sel_part].keys()), key=utils.get_chapter_sort_key)
-            def fmt_chap(x): return "전체" if x == "전체" else f"{name_map.get(x, x)} ({counts['chapters'].get(x, 0)})"
+            def fmt_chap(x): 
+                if x == "전체": return "전체"
+                full_name = name_map.get(x, x)
+                return f"{full_name} ({counts['chapters'].get(full_name, 0)})"
             sel_chap = st.selectbox("Chapter", chap_opts, format_func=fmt_chap)
             
         with c3:
