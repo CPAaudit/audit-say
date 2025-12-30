@@ -58,12 +58,7 @@ def main():
             def fmt_std(x): return "전체" if x == "전체" else f"{x} ({counts['standards'].get(x, 0)})"
             sel_std = st.selectbox("Standard", std_opts, format_func=fmt_std)
 
-        # [Debug Info]
-        with st.expander("🔍 디버그 정보 (문제 수 데이터)", expanded=False):
-            st.write("Counts Keys (Chapters):", list(counts['chapters'].keys()))
-            st.write("Selected Chapter Code:", sel_chap)
-            st.write("Mapped Name:", name_map.get(sel_chap, "Not Found"))
-            
+
         # [난이도 접근 제어]
         st.write("")
         st.subheader("문항 수 선택")
