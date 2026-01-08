@@ -4,7 +4,7 @@ import database
 import time
 
 # [Page Config]
-st.set_page_config(page_title="Audit Rank | Home", page_icon="🏹", layout="wide")
+st.set_page_config(page_title="Audit Say | Home", page_icon="🏹", layout="wide")
 utils.local_css()
 
 import streamlit as st
@@ -13,7 +13,7 @@ import database
 import time
 
 # [Page Config]
-st.set_page_config(page_title="Audit Rank | Home", page_icon="🏹", layout="wide")
+st.set_page_config(page_title="Audit Say | Home", page_icon="🏹", layout="wide")
 utils.local_css()
 
 def main():
@@ -30,7 +30,7 @@ def main():
     
     # [OAuth Callback Handling] - REMOVED
 
-    st.title("Audit Rank 🏹")
+    st.title("Audit Say 🏹")
     
     # --- Login / Signup ---
     if not st.session_state.username:

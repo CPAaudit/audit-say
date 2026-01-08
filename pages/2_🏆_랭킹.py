@@ -3,7 +3,7 @@ import utils
 import database
 
 # [초기 설정]
-st.set_page_config(page_title="랭킹 | Audit Rank", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="랭킹 | Audit Say", page_icon="🏆", layout="wide")
 utils.local_css()
 
 def main():

@@ -4,7 +4,7 @@ import database
 
 
 # [초기 설정]
-st.set_page_config(page_title="문제 풀기 | Audit Rank", page_icon="📝", layout="wide")
+st.set_page_config(page_title="문제 풀기 | Audit Say", page_icon="📝", layout="wide")
 utils.local_css()
 
 def main():
