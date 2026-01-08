@@ -91,19 +91,31 @@ def main():
         questions = database.fetch_all_questions() # Don't use cached utils.load_db() to get fresh data
         
         # Filter Logic
-        c_filter1, c_filter2 = st.columns([1, 2])
-        with c_filter1:
+        c_p, c_c, c_s = st.columns([1, 1, 2])
+        
+        with c_p:
             # Extract parts safely
             all_parts = sorted(list(set([str(q.get('part', 'Unknown')) for q in questions])))
             sel_part_filter = st.selectbox("Part 필터", ["전체"] + all_parts)
             
-        with c_filter2:
+        with c_c:
+            # Dynamic Chapter Filter
+            if sel_part_filter == "전체":
+                potential_chaps = [str(q.get('chapter', 'Unknown')) for q in questions]
+            else:
+                potential_chaps = [str(q.get('chapter', 'Unknown')) for q in questions if str(q.get('part')) == sel_part_filter]
+            
+            unique_chaps = sorted(list(set(potential_chaps)), key=utils.get_chapter_sort_key)
+            sel_chap_filter = st.selectbox("Chapter 필터", ["전체"] + unique_chaps)
+            
+        with c_s:
             search_term = st.text_input("제목 검색", "")
             
         filtered = [
             q for q in questions 
             if (search_term.lower() in q.get('question_title', '').lower())
             and (sel_part_filter == "전체" or str(q.get('part')) == sel_part_filter)
+            and (sel_chap_filter == "전체" or str(q.get('chapter')) == sel_chap_filter)
         ]
         
         if not filtered:
