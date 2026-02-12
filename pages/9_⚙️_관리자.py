@@ -2,6 +2,7 @@ import streamlit as st
 import database
 import utils
 import json
+import pandas as pd
 
 # [초기 설정]
 st.set_page_config(page_title="관리자 | Audit Say", page_icon="⚙️", layout="wide")
@@ -15,8 +16,9 @@ def main():
     st.title("⚙️ 관리자 페이지 (문제 관리)")
     
     tab_add, tab_manage, tab_users = st.tabs(["➕ 문제 추가", "🛠️ 문제 수정/삭제", "👥 회원 관리"])
-    
-    # Common Data
+
+
+
     hierarchy, name_map, _, _ = utils.load_structure()
     parts = sorted(list(hierarchy.keys()))
     
