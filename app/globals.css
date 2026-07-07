@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1e222b;
+  --foreground: #eceff4;
+  --card: #252932;
+  --card-border: #353c4a;
+  --primary: #5e81ac;
+  --primary-hover: #81a1c1;
+  --accent: #88c0d0;
+  --success: #a3be8c;
+  --warning: #ebcb8b;
+  --danger: #bf616a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1e222b;
+}
+::-webkit-scrollbar-thumb {
+  background: #353c4a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4c566a;
+}
+
+/* Base custom classes to match original Streamlit styling style but much cleaner */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.4);
+  border-color: var(--accent);
+}
