@@ -1,9 +1,0 @@
-streamlit
-pandas
-matplotlib
-numpy
-google-genai
-bcrypt
-streamlit-option-menu
-supabase
-
